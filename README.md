@@ -11,4 +11,7 @@ While not a _goal_ as such, a large priority will be maintaining a reasonable de
 Other than happy hacking, I would love to make a minimalistic, dwm-inspired yet idiomatic clone that could be used as a basis for other Rust WM projects.
 
 ## Requisites
-TODO
+### Development dependencies
+1. Rust nightly
+2. Rust nightly-06-22 (for c2rust)
+
