@@ -1,12 +1,4 @@
-#![allow(dead_code,
-         mutable_transmutes,
-         non_camel_case_types,
-         non_snake_case,
-         non_upper_case_globals,
-         unused_assignments,
-         unused_mut)]
-#![feature(c_variadic, const_raw_ptr_to_usize_cast, extern_types)]
-extern crate libc;
+use libc;
 extern "C" {
     pub type _IO_wide_data;
     pub type _IO_codecvt;

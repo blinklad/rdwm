@@ -1,12 +1,4 @@
-#![allow(dead_code,
-         mutable_transmutes,
-         non_camel_case_types,
-         non_snake_case,
-         non_upper_case_globals,
-         unused_assignments,
-         unused_mut)]
-#![feature(const_raw_ptr_to_usize_cast, extern_types)]
-extern crate libc;
+use libc;
 extern "C" {
     pub type _IO_wide_data;
     pub type _IO_codecvt;
@@ -18,20 +10,20 @@ extern "C" {
     pub type _FcCharSet;
     pub type _FcPattern;
     #[no_mangle]
-    fn setlocale(__category: libc::c_int, __locale: *const libc::c_char)
-     -> *mut libc::c_char;
+    fn setlocale(__category: libc::c_int, __locale: *const libc::c_char) -> *mut libc::c_char;
     #[no_mangle]
-    fn signal(__sig: libc::c_int, __handler: __sighandler_t)
-     -> __sighandler_t;
+    fn signal(__sig: libc::c_int, __handler: __sighandler_t) -> __sighandler_t;
     #[no_mangle]
     static mut stderr: *mut FILE;
     #[no_mangle]
     fn fprintf(_: *mut FILE, _: *const libc::c_char, _: ...) -> libc::c_int;
     #[no_mangle]
-    fn snprintf(_: *mut libc::c_char, _: libc::c_ulong,
-                _: *const libc::c_char, _: ...) -> libc::c_int;
-    #[no_mangle]
-    fn fputs(__s: *const libc::c_char, __stream: *mut FILE) -> libc::c_int;
+    fn snprintf(
+        _: *mut libc::c_char,
+        _: libc::c_ulong,
+        _: *const libc::c_char,
+        _: ...
+    ) -> libc::c_int;
     #[no_mangle]
     fn perror(__s: *const libc::c_char);
     #[no_mangle]
@@ -41,77 +33,103 @@ extern "C" {
     #[no_mangle]
     fn free(__ptr: *mut libc::c_void);
     #[no_mangle]
-    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong)
-     -> *mut libc::c_void;
+    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
     #[no_mangle]
-    fn strcpy(_: *mut libc::c_char, _: *const libc::c_char)
-     -> *mut libc::c_char;
+    fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
     #[no_mangle]
     fn strncpy(_: *mut libc::c_char, _: *const libc::c_char, _: libc::c_ulong)
-     -> *mut libc::c_char;
+        -> *mut libc::c_char;
     #[no_mangle]
     fn strcmp(_: *const libc::c_char, _: *const libc::c_char) -> libc::c_int;
     #[no_mangle]
-    fn strstr(_: *const libc::c_char, _: *const libc::c_char)
-     -> *mut libc::c_char;
+    fn strstr(_: *const libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
     #[no_mangle]
     fn close(__fd: libc::c_int) -> libc::c_int;
     #[no_mangle]
-    fn execvp(__file: *const libc::c_char, __argv: *const *mut libc::c_char)
-     -> libc::c_int;
+    fn execvp(__file: *const libc::c_char, __argv: *const *mut libc::c_char) -> libc::c_int;
     #[no_mangle]
     fn setsid() -> __pid_t;
     #[no_mangle]
     fn fork() -> __pid_t;
     #[no_mangle]
-    fn waitpid(__pid: __pid_t, __stat_loc: *mut libc::c_int,
-               __options: libc::c_int) -> __pid_t;
+    fn waitpid(__pid: __pid_t, __stat_loc: *mut libc::c_int, __options: libc::c_int) -> __pid_t;
     #[no_mangle]
     fn XGetModifierMapping(_: *mut Display) -> *mut XModifierKeymap;
     #[no_mangle]
     fn XOpenDisplay(_: *const libc::c_char) -> *mut Display;
     #[no_mangle]
-    fn XInternAtom(_: *mut Display, _: *const libc::c_char, _: libc::c_int)
-     -> Atom;
+    fn XInternAtom(_: *mut Display, _: *const libc::c_char, _: libc::c_int) -> Atom;
     #[no_mangle]
-    fn XCreateSimpleWindow(_: *mut Display, _: Window, _: libc::c_int,
-                           _: libc::c_int, _: libc::c_uint, _: libc::c_uint,
-                           _: libc::c_uint, _: libc::c_ulong,
-                           _: libc::c_ulong) -> Window;
+    fn XCreateSimpleWindow(
+        _: *mut Display,
+        _: Window,
+        _: libc::c_int,
+        _: libc::c_int,
+        _: libc::c_uint,
+        _: libc::c_uint,
+        _: libc::c_uint,
+        _: libc::c_ulong,
+        _: libc::c_ulong,
+    ) -> Window;
     #[no_mangle]
-    fn XCreateWindow(_: *mut Display, _: Window, _: libc::c_int,
-                     _: libc::c_int, _: libc::c_uint, _: libc::c_uint,
-                     _: libc::c_uint, _: libc::c_int, _: libc::c_uint,
-                     _: *mut Visual, _: libc::c_ulong,
-                     _: *mut XSetWindowAttributes) -> Window;
+    fn XCreateWindow(
+        _: *mut Display,
+        _: Window,
+        _: libc::c_int,
+        _: libc::c_int,
+        _: libc::c_uint,
+        _: libc::c_uint,
+        _: libc::c_uint,
+        _: libc::c_int,
+        _: libc::c_uint,
+        _: *mut Visual,
+        _: libc::c_ulong,
+        _: *mut XSetWindowAttributes,
+    ) -> Window;
     #[no_mangle]
-    fn XKeycodeToKeysym(_: *mut Display, _: KeyCode, _: libc::c_int)
-     -> KeySym;
+    fn XKeycodeToKeysym(_: *mut Display, _: KeyCode, _: libc::c_int) -> KeySym;
     #[no_mangle]
     fn XSetErrorHandler(_: XErrorHandler) -> XErrorHandler;
     #[no_mangle]
-    fn XGetWMProtocols(_: *mut Display, _: Window, _: *mut *mut Atom,
-                       _: *mut libc::c_int) -> libc::c_int;
+    fn XGetWMProtocols(
+        _: *mut Display,
+        _: Window,
+        _: *mut *mut Atom,
+        _: *mut libc::c_int,
+    ) -> libc::c_int;
     #[no_mangle]
     fn XFreeStringList(_: *mut *mut libc::c_char);
     #[no_mangle]
     fn XAllowEvents(_: *mut Display, _: libc::c_int, _: Time) -> libc::c_int;
     #[no_mangle]
-    fn XChangeProperty(_: *mut Display, _: Window, _: Atom, _: Atom,
-                       _: libc::c_int, _: libc::c_int,
-                       _: *const libc::c_uchar, _: libc::c_int)
-     -> libc::c_int;
+    fn XChangeProperty(
+        _: *mut Display,
+        _: Window,
+        _: Atom,
+        _: Atom,
+        _: libc::c_int,
+        _: libc::c_int,
+        _: *const libc::c_uchar,
+        _: libc::c_int,
+    ) -> libc::c_int;
     #[no_mangle]
-    fn XChangeWindowAttributes(_: *mut Display, _: Window, _: libc::c_ulong,
-                               _: *mut XSetWindowAttributes) -> libc::c_int;
+    fn XChangeWindowAttributes(
+        _: *mut Display,
+        _: Window,
+        _: libc::c_ulong,
+        _: *mut XSetWindowAttributes,
+    ) -> libc::c_int;
     #[no_mangle]
-    fn XCheckMaskEvent(_: *mut Display, _: libc::c_long, _: *mut XEvent)
-     -> libc::c_int;
+    fn XCheckMaskEvent(_: *mut Display, _: libc::c_long, _: *mut XEvent) -> libc::c_int;
     #[no_mangle]
     fn XCloseDisplay(_: *mut Display) -> libc::c_int;
     #[no_mangle]
-    fn XConfigureWindow(_: *mut Display, _: Window, _: libc::c_uint,
-                        _: *mut XWindowChanges) -> libc::c_int;
+    fn XConfigureWindow(
+        _: *mut Display,
+        _: Window,
+        _: libc::c_uint,
+        _: *mut XWindowChanges,
+    ) -> libc::c_int;
     #[no_mangle]
     fn XDefineCursor(_: *mut Display, _: Window, _: Cursor) -> libc::c_int;
     #[no_mangle]
@@ -123,29 +141,59 @@ extern "C" {
     #[no_mangle]
     fn XFreeModifiermap(_: *mut XModifierKeymap) -> libc::c_int;
     #[no_mangle]
-    fn XGetTransientForHint(_: *mut Display, _: Window, _: *mut Window)
-     -> libc::c_int;
+    fn XGetTransientForHint(_: *mut Display, _: Window, _: *mut Window) -> libc::c_int;
     #[no_mangle]
-    fn XGetWindowProperty(_: *mut Display, _: Window, _: Atom,
-                          _: libc::c_long, _: libc::c_long, _: libc::c_int,
-                          _: Atom, _: *mut Atom, _: *mut libc::c_int,
-                          _: *mut libc::c_ulong, _: *mut libc::c_ulong,
-                          _: *mut *mut libc::c_uchar) -> libc::c_int;
+    fn XGetWindowProperty(
+        _: *mut Display,
+        _: Window,
+        _: Atom,
+        _: libc::c_long,
+        _: libc::c_long,
+        _: libc::c_int,
+        _: Atom,
+        _: *mut Atom,
+        _: *mut libc::c_int,
+        _: *mut libc::c_ulong,
+        _: *mut libc::c_ulong,
+        _: *mut *mut libc::c_uchar,
+    ) -> libc::c_int;
     #[no_mangle]
-    fn XGetWindowAttributes(_: *mut Display, _: Window,
-                            _: *mut XWindowAttributes) -> libc::c_int;
+    fn XGetWindowAttributes(_: *mut Display, _: Window, _: *mut XWindowAttributes) -> libc::c_int;
     #[no_mangle]
-    fn XGrabButton(_: *mut Display, _: libc::c_uint, _: libc::c_uint,
-                   _: Window, _: libc::c_int, _: libc::c_uint, _: libc::c_int,
-                   _: libc::c_int, _: Window, _: Cursor) -> libc::c_int;
+    fn XGrabButton(
+        _: *mut Display,
+        _: libc::c_uint,
+        _: libc::c_uint,
+        _: Window,
+        _: libc::c_int,
+        _: libc::c_uint,
+        _: libc::c_int,
+        _: libc::c_int,
+        _: Window,
+        _: Cursor,
+    ) -> libc::c_int;
     #[no_mangle]
-    fn XGrabKey(_: *mut Display, _: libc::c_int, _: libc::c_uint, _: Window,
-                _: libc::c_int, _: libc::c_int, _: libc::c_int)
-     -> libc::c_int;
+    fn XGrabKey(
+        _: *mut Display,
+        _: libc::c_int,
+        _: libc::c_uint,
+        _: Window,
+        _: libc::c_int,
+        _: libc::c_int,
+        _: libc::c_int,
+    ) -> libc::c_int;
     #[no_mangle]
-    fn XGrabPointer(_: *mut Display, _: Window, _: libc::c_int,
-                    _: libc::c_uint, _: libc::c_int, _: libc::c_int,
-                    _: Window, _: Cursor, _: Time) -> libc::c_int;
+    fn XGrabPointer(
+        _: *mut Display,
+        _: Window,
+        _: libc::c_int,
+        _: libc::c_uint,
+        _: libc::c_int,
+        _: libc::c_int,
+        _: Window,
+        _: Cursor,
+        _: Time,
+    ) -> libc::c_int;
     #[no_mangle]
     fn XGrabServer(_: *mut Display) -> libc::c_int;
     #[no_mangle]
@@ -157,51 +205,67 @@ extern "C" {
     #[no_mangle]
     fn XMapWindow(_: *mut Display, _: Window) -> libc::c_int;
     #[no_mangle]
-    fn XMaskEvent(_: *mut Display, _: libc::c_long, _: *mut XEvent)
-     -> libc::c_int;
+    fn XMaskEvent(_: *mut Display, _: libc::c_long, _: *mut XEvent) -> libc::c_int;
     #[no_mangle]
-    fn XMoveResizeWindow(_: *mut Display, _: Window, _: libc::c_int,
-                         _: libc::c_int, _: libc::c_uint, _: libc::c_uint)
-     -> libc::c_int;
+    fn XMoveResizeWindow(
+        _: *mut Display,
+        _: Window,
+        _: libc::c_int,
+        _: libc::c_int,
+        _: libc::c_uint,
+        _: libc::c_uint,
+    ) -> libc::c_int;
     #[no_mangle]
-    fn XMoveWindow(_: *mut Display, _: Window, _: libc::c_int, _: libc::c_int)
-     -> libc::c_int;
+    fn XMoveWindow(_: *mut Display, _: Window, _: libc::c_int, _: libc::c_int) -> libc::c_int;
     #[no_mangle]
     fn XNextEvent(_: *mut Display, _: *mut XEvent) -> libc::c_int;
     #[no_mangle]
-    fn XQueryPointer(_: *mut Display, _: Window, _: *mut Window,
-                     _: *mut Window, _: *mut libc::c_int, _: *mut libc::c_int,
-                     _: *mut libc::c_int, _: *mut libc::c_int,
-                     _: *mut libc::c_uint) -> libc::c_int;
+    fn XQueryPointer(
+        _: *mut Display,
+        _: Window,
+        _: *mut Window,
+        _: *mut Window,
+        _: *mut libc::c_int,
+        _: *mut libc::c_int,
+        _: *mut libc::c_int,
+        _: *mut libc::c_int,
+        _: *mut libc::c_uint,
+    ) -> libc::c_int;
     #[no_mangle]
-    fn XQueryTree(_: *mut Display, _: Window, _: *mut Window, _: *mut Window,
-                  _: *mut *mut Window, _: *mut libc::c_uint) -> libc::c_int;
+    fn XQueryTree(
+        _: *mut Display,
+        _: Window,
+        _: *mut Window,
+        _: *mut Window,
+        _: *mut *mut Window,
+        _: *mut libc::c_uint,
+    ) -> libc::c_int;
     #[no_mangle]
     fn XRaiseWindow(_: *mut Display, _: Window) -> libc::c_int;
     #[no_mangle]
     fn XRefreshKeyboardMapping(_: *mut XMappingEvent) -> libc::c_int;
     #[no_mangle]
-    fn XSelectInput(_: *mut Display, _: Window, _: libc::c_long)
-     -> libc::c_int;
+    fn XSelectInput(_: *mut Display, _: Window, _: libc::c_long) -> libc::c_int;
     #[no_mangle]
-    fn XSendEvent(_: *mut Display, _: Window, _: libc::c_int, _: libc::c_long,
-                  _: *mut XEvent) -> libc::c_int;
+    fn XSendEvent(
+        _: *mut Display,
+        _: Window,
+        _: libc::c_int,
+        _: libc::c_long,
+        _: *mut XEvent,
+    ) -> libc::c_int;
     #[no_mangle]
     fn XSetCloseDownMode(_: *mut Display, _: libc::c_int) -> libc::c_int;
     #[no_mangle]
-    fn XSetInputFocus(_: *mut Display, _: Window, _: libc::c_int, _: Time)
-     -> libc::c_int;
+    fn XSetInputFocus(_: *mut Display, _: Window, _: libc::c_int, _: Time) -> libc::c_int;
     #[no_mangle]
-    fn XSetWindowBorder(_: *mut Display, _: Window, _: libc::c_ulong)
-     -> libc::c_int;
+    fn XSetWindowBorder(_: *mut Display, _: Window, _: libc::c_ulong) -> libc::c_int;
     #[no_mangle]
     fn XSync(_: *mut Display, _: libc::c_int) -> libc::c_int;
     #[no_mangle]
-    fn XUngrabButton(_: *mut Display, _: libc::c_uint, _: libc::c_uint,
-                     _: Window) -> libc::c_int;
+    fn XUngrabButton(_: *mut Display, _: libc::c_uint, _: libc::c_uint, _: Window) -> libc::c_int;
     #[no_mangle]
-    fn XUngrabKey(_: *mut Display, _: libc::c_int, _: libc::c_uint, _: Window)
-     -> libc::c_int;
+    fn XUngrabKey(_: *mut Display, _: libc::c_int, _: libc::c_uint, _: Window) -> libc::c_int;
     #[no_mangle]
     fn XUngrabPointer(_: *mut Display, _: Time) -> libc::c_int;
     #[no_mangle]
@@ -209,57 +273,78 @@ extern "C" {
     #[no_mangle]
     fn XUnmapWindow(_: *mut Display, _: Window) -> libc::c_int;
     #[no_mangle]
-    fn XWarpPointer(_: *mut Display, _: Window, _: Window, _: libc::c_int,
-                    _: libc::c_int, _: libc::c_uint, _: libc::c_uint,
-                    _: libc::c_int, _: libc::c_int) -> libc::c_int;
+    fn XWarpPointer(
+        _: *mut Display,
+        _: Window,
+        _: Window,
+        _: libc::c_int,
+        _: libc::c_int,
+        _: libc::c_uint,
+        _: libc::c_uint,
+        _: libc::c_int,
+        _: libc::c_int,
+    ) -> libc::c_int;
     #[no_mangle]
     fn XSupportsLocale() -> libc::c_int;
     #[no_mangle]
-    fn XGetClassHint(_: *mut Display, _: Window, _: *mut XClassHint)
-     -> libc::c_int;
+    fn XGetClassHint(_: *mut Display, _: Window, _: *mut XClassHint) -> libc::c_int;
     #[no_mangle]
-    fn XGetTextProperty(_: *mut Display, _: Window, _: *mut XTextProperty,
-                        _: Atom) -> libc::c_int;
+    fn XGetTextProperty(_: *mut Display, _: Window, _: *mut XTextProperty, _: Atom) -> libc::c_int;
     #[no_mangle]
     fn XGetWMHints(_: *mut Display, _: Window) -> *mut XWMHints;
     #[no_mangle]
-    fn XGetWMNormalHints(_: *mut Display, _: Window, _: *mut XSizeHints,
-                         _: *mut libc::c_long) -> libc::c_int;
+    fn XGetWMNormalHints(
+        _: *mut Display,
+        _: Window,
+        _: *mut XSizeHints,
+        _: *mut libc::c_long,
+    ) -> libc::c_int;
     #[no_mangle]
-    fn XSetClassHint(_: *mut Display, _: Window, _: *mut XClassHint)
-     -> libc::c_int;
+    fn XSetClassHint(_: *mut Display, _: Window, _: *mut XClassHint) -> libc::c_int;
     #[no_mangle]
-    fn XSetWMHints(_: *mut Display, _: Window, _: *mut XWMHints)
-     -> libc::c_int;
+    fn XSetWMHints(_: *mut Display, _: Window, _: *mut XWMHints) -> libc::c_int;
     #[no_mangle]
-    fn XmbTextPropertyToTextList(display: *mut Display,
-                                 text_prop: *const XTextProperty,
-                                 list_return: *mut *mut *mut libc::c_char,
-                                 count_return: *mut libc::c_int)
-     -> libc::c_int;
+    fn XmbTextPropertyToTextList(
+        display: *mut Display,
+        text_prop: *const XTextProperty,
+        list_return: *mut *mut *mut libc::c_char,
+        count_return: *mut libc::c_int,
+    ) -> libc::c_int;
     #[no_mangle]
     fn XineramaIsActive(dpy_0: *mut Display) -> libc::c_int;
     #[no_mangle]
-    fn XineramaQueryScreens(dpy_0: *mut Display, number: *mut libc::c_int)
-     -> *mut XineramaScreenInfo;
+    fn XineramaQueryScreens(
+        dpy_0: *mut Display,
+        number: *mut libc::c_int,
+    ) -> *mut XineramaScreenInfo;
     /* Drawable abstraction */
     #[no_mangle]
-    fn drw_create(dpy_0: *mut Display, screen_0: libc::c_int, win: Window,
-                  w: libc::c_uint, h: libc::c_uint) -> *mut Drw;
+    fn drw_create(
+        dpy_0: *mut Display,
+        screen_0: libc::c_int,
+        win: Window,
+        w: libc::c_uint,
+        h: libc::c_uint,
+    ) -> *mut Drw;
     #[no_mangle]
     fn drw_resize(drw_0: *mut Drw, w: libc::c_uint, h: libc::c_uint);
     #[no_mangle]
     fn drw_free(drw_0: *mut Drw);
     /* Fnt abstraction */
     #[no_mangle]
-    fn drw_fontset_create(drw_0: *mut Drw, fonts_0: *mut *const libc::c_char,
-                          fontcount: size_t) -> *mut Fnt;
+    fn drw_fontset_create(
+        drw_0: *mut Drw,
+        fonts_0: *mut *const libc::c_char,
+        fontcount: size_t,
+    ) -> *mut Fnt;
     #[no_mangle]
-    fn drw_fontset_getwidth(drw_0: *mut Drw, text: *const libc::c_char)
-     -> libc::c_uint;
+    fn drw_fontset_getwidth(drw_0: *mut Drw, text: *const libc::c_char) -> libc::c_uint;
     #[no_mangle]
-    fn drw_scm_create(drw_0: *mut Drw, clrnames: *mut *const libc::c_char,
-                      clrcount: size_t) -> *mut Clr;
+    fn drw_scm_create(
+        drw_0: *mut Drw,
+        clrnames: *mut *const libc::c_char,
+        clrcount: size_t,
+    ) -> *mut Clr;
     /* Cursor abstraction */
     #[no_mangle]
     fn drw_cur_create(drw_0: *mut Drw, shape: libc::c_int) -> *mut Cur;
@@ -269,18 +354,36 @@ extern "C" {
     fn drw_setscheme(drw_0: *mut Drw, scm: *mut Clr);
     /* Drawing functions */
     #[no_mangle]
-    fn drw_rect(drw_0: *mut Drw, x: libc::c_int, y: libc::c_int,
-                w: libc::c_uint, h: libc::c_uint, filled: libc::c_int,
-                invert: libc::c_int);
+    fn drw_rect(
+        drw_0: *mut Drw,
+        x: libc::c_int,
+        y: libc::c_int,
+        w: libc::c_uint,
+        h: libc::c_uint,
+        filled: libc::c_int,
+        invert: libc::c_int,
+    );
     #[no_mangle]
-    fn drw_text(drw_0: *mut Drw, x: libc::c_int, y: libc::c_int,
-                w: libc::c_uint, h: libc::c_uint, lpad: libc::c_uint,
-                text: *const libc::c_char, invert: libc::c_int)
-     -> libc::c_int;
+    fn drw_text(
+        drw_0: *mut Drw,
+        x: libc::c_int,
+        y: libc::c_int,
+        w: libc::c_uint,
+        h: libc::c_uint,
+        lpad: libc::c_uint,
+        text: *const libc::c_char,
+        invert: libc::c_int,
+    ) -> libc::c_int;
     /* Map functions */
     #[no_mangle]
-    fn drw_map(drw_0: *mut Drw, win: Window, x: libc::c_int, y: libc::c_int,
-               w: libc::c_uint, h: libc::c_uint);
+    fn drw_map(
+        drw_0: *mut Drw,
+        win: Window,
+        x: libc::c_int,
+        y: libc::c_int,
+        w: libc::c_uint,
+        h: libc::c_uint,
+    );
     /* See LICENSE file for copyright and license details. */
     #[no_mangle]
     fn die(fmt: *const libc::c_char, _: ...);
@@ -292,7 +395,7 @@ pub type __off64_t = libc::c_long;
 pub type __pid_t = libc::c_int;
 pub type __sighandler_t = Option<unsafe extern "C" fn(_: libc::c_int) -> ()>;
 pub type size_t = libc::c_ulong;
-#[derive ( Copy , Clone )]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct _IO_FILE {
     pub _flags: libc::c_int,
@@ -339,18 +442,17 @@ pub type Colormap = XID;
 pub type KeySym = XID;
 pub type KeyCode = libc::c_uchar;
 pub type XPointer = *mut libc::c_char;
-#[derive ( Copy , Clone )]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct _XExtData {
     pub number: libc::c_int,
     pub next: *mut _XExtData,
-    pub free_private: Option<unsafe extern "C" fn(_: *mut _XExtData)
-                                 -> libc::c_int>,
+    pub free_private: Option<unsafe extern "C" fn(_: *mut _XExtData) -> libc::c_int>,
     pub private_data: XPointer,
 }
 pub type XExtData = _XExtData;
 pub type GC = *mut _XGC;
-#[derive ( Copy , Clone )]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Visual {
     pub ext_data: *mut XExtData,
@@ -362,14 +464,14 @@ pub struct Visual {
     pub bits_per_rgb: libc::c_int,
     pub map_entries: libc::c_int,
 }
-#[derive ( Copy , Clone )]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Depth {
     pub depth: libc::c_int,
     pub nvisuals: libc::c_int,
     pub visuals: *mut Visual,
 }
-#[derive ( Copy , Clone )]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Screen {
     pub ext_data: *mut XExtData,
@@ -393,7 +495,7 @@ pub struct Screen {
     pub save_unders: libc::c_int,
     pub root_input_mask: libc::c_long,
 }
-#[derive ( Copy , Clone )]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct ScreenFormat {
     pub ext_data: *mut XExtData,
@@ -401,124 +503,15 @@ pub struct ScreenFormat {
     pub bits_per_pixel: libc::c_int,
     pub scanline_pad: libc::c_int,
 }
-#[derive ( Copy , Clone )]
+
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct XSetWindowAttributes {
     pub background_pixmap: Pixmap,
     pub background_pixel: libc::c_ulong,
     pub border_pixmap: Pixmap,
     pub border_pixel: libc::c_ulong,
-    pub bit_gravity: libc::c_int,
-    pub win_gravity: libc::c_int,
-    pub backing_store: libc::c_int,
-    pub backing_planes: libc::c_ulong,
-    pub backing_pixel: libc::c_ulong,
-    pub save_under: libc::c_int,
-    pub event_mask: libc::c_long,
-    pub do_not_propagate_mask: libc::c_long,
-    pub override_redirect: libc::c_int,
-    pub colormap: Colormap,
-    pub cursor: Cursor,
-}
-#[derive ( Copy , Clone )]
-#[repr(C)]
-pub struct XWindowAttributes {
-    pub x: libc::c_int,
-    pub y: libc::c_int,
-    pub width: libc::c_int,
-    pub height: libc::c_int,
-    pub border_width: libc::c_int,
-    pub depth: libc::c_int,
-    pub visual: *mut Visual,
-    pub root: Window,
-    pub class: libc::c_int,
-    pub bit_gravity: libc::c_int,
-    pub win_gravity: libc::c_int,
-    pub backing_store: libc::c_int,
-    pub backing_planes: libc::c_ulong,
-    pub backing_pixel: libc::c_ulong,
-    pub save_under: libc::c_int,
-    pub colormap: Colormap,
-    pub map_installed: libc::c_int,
-    pub map_state: libc::c_int,
-    pub all_event_masks: libc::c_long,
-    pub your_event_mask: libc::c_long,
-    pub do_not_propagate_mask: libc::c_long,
-    pub override_redirect: libc::c_int,
-    pub screen: *mut Screen,
-}
-#[derive ( Copy , Clone )]
-#[repr(C)]
-pub struct XWindowChanges {
-    pub x: libc::c_int,
-    pub y: libc::c_int,
-    pub width: libc::c_int,
-    pub height: libc::c_int,
-    pub border_width: libc::c_int,
-    pub sibling: Window,
-    pub stack_mode: libc::c_int,
-}
-#[derive ( Copy , Clone )]
-#[repr(C)]
-pub struct XModifierKeymap {
-    pub max_keypermod: libc::c_int,
-    pub modifiermap: *mut KeyCode,
-}
-pub type Display = _XDisplay;
-#[derive ( Copy , Clone )]
-#[repr(C)]
-pub struct C2RustUnnamed {
-    pub ext_data: *mut XExtData,
-    pub private1: *mut _XPrivate,
-    pub fd: libc::c_int,
-    pub private2: libc::c_int,
-    pub proto_major_version: libc::c_int,
-    pub proto_minor_version: libc::c_int,
-    pub vendor: *mut libc::c_char,
-    pub private3: XID,
-    pub private4: XID,
-    pub private5: XID,
-    pub private6: libc::c_int,
-    pub resource_alloc: Option<unsafe extern "C" fn(_: *mut _XDisplay)
-                                   -> XID>,
-    pub byte_order: libc::c_int,
-    pub bitmap_unit: libc::c_int,
-    pub bitmap_pad: libc::c_int,
-    pub bitmap_bit_order: libc::c_int,
-    pub nformats: libc::c_int,
-    pub pixmap_format: *mut ScreenFormat,
-    pub private8: libc::c_int,
-    pub release: libc::c_int,
-    pub private9: *mut _XPrivate,
-    pub private10: *mut _XPrivate,
-    pub qlen: libc::c_int,
-    pub last_request_read: libc::c_ulong,
-    pub request: libc::c_ulong,
-    pub private11: XPointer,
-    pub private12: XPointer,
-    pub private13: XPointer,
-    pub private14: XPointer,
-    pub max_request_size: libc::c_uint,
-    pub db: *mut _XrmHashBucketRec,
-    pub private15: Option<unsafe extern "C" fn(_: *mut _XDisplay)
-                              -> libc::c_int>,
-    pub display_name: *mut libc::c_char,
-    pub default_screen: libc::c_int,
-    pub nscreens: libc::c_int,
-    pub screens: *mut Screen,
-    pub motion_buffer: libc::c_ulong,
-    pub private16: libc::c_ulong,
-    pub min_keycode: libc::c_int,
-    pub max_keycode: libc::c_int,
-    pub private17: XPointer,
-    pub private18: XPointer,
-    pub private19: libc::c_int,
-    pub xdefaults: *mut libc::c_char,
-}
-pub type _XPrivDisplay = *mut C2RustUnnamed;
-#[derive ( Copy , Clone )]
-#[repr(C)]
-pub struct XKeyEvent {
+    pub XKeyEvent {
     pub type_0: libc::c_int,
     pub serial: libc::c_ulong,
     pub send_event: libc::c_int,
@@ -534,6 +527,7 @@ pub struct XKeyEvent {
     pub state: libc::c_uint,
     pub keycode: libc::c_uint,
     pub same_screen: libc::c_int,
+}
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -1420,7 +1414,7 @@ static mut dmenucmd: [*const libc::c_char; 14] =
     unsafe {
         [b"dmenu_run\x00" as *const u8 as *const libc::c_char,
          b"-m\x00" as *const u8 as *const libc::c_char,
-         dmenumon.as_ptr() as *mut _ as *const libc::c_char,
+         dmenumon.as_ptr() as *mut u8 as *const libc::c_char,
          b"-fn\x00" as *const u8 as *const libc::c_char, dmenufont.as_ptr(),
          b"-nb\x00" as *const u8 as *const libc::c_char, col_gray1.as_ptr(),
          b"-nf\x00" as *const u8 as *const libc::c_char, col_gray3.as_ptr(),
@@ -4844,7 +4838,635 @@ unsafe extern "C" fn run_static_initializers() {
          }]
 }
 #[used]
-#[cfg_attr ( target_os = "linux" , link_section = ".init_array" )]
-#[cfg_attr ( target_os = "windows" , link_section = ".CRT$XIB" )]
-#[cfg_attr ( target_os = "macos" , link_section = "__DATA,__mod_init_func" )]
+#[cfg_attr(target_os = "linux", link_section = ".init_array")]
+#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
+#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
+static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [run_static_initializers];
+            ;;
+            init
+        ,
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x66i32 as KeySym,
+                func: Some(setlayout as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    v: &*layouts.as_ptr().offset(1) as *const Layout as *const libc::c_void,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x6di32 as KeySym,
+                func: Some(setlayout as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    v: &*layouts.as_ptr().offset(2) as *const Layout as *const libc::c_void,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x20i32 as KeySym,
+                func: Some(setlayout as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x20i32 as KeySym,
+                func: Some(togglefloating as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x30i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: !0i32 as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x30i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: !0i32 as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x2ci32 as KeySym,
+                func: Some(focusmon as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: -1i32 },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x2ei32 as KeySym,
+                func: Some(focusmon as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 1i32 },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x2ci32 as KeySym,
+                func: Some(tagmon as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: -1i32 },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x2ei32 as KeySym,
+                func: Some(tagmon as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 1i32 },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x31i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 0i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x31i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 0i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x31i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 0i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x31i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 0i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x32i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 1i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x32i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 1i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x32i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 1i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x32i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 1i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x33i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 2i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x33i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 2i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x33i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 2i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x33i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 2i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x34i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 3i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x34i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 3i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x34i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 3i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x34i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 3i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x35i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 4i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x35i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 4i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x35i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 4i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x35i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 4i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x36i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 5i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x36i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 5i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x36i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 5i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x36i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 5i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x37i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 6i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x37i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 6i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x37i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 6i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x37i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 6i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x38i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 7i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x38i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 7i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x38i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 7i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x38i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 7i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32) as libc::c_uint,
+                keysym: 0x39i32 as KeySym,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 8i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32) as libc::c_uint,
+                keysym: 0x39i32 as KeySym,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 8i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x39i32 as KeySym,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 8i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 2i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x39i32 as KeySym,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    ui: (1i32 << 8i32) as libc::c_uint,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Key {
+                mod_0: (1i32 << 3i32 | 1i32 << 0i32) as libc::c_uint,
+                keysym: 0x71i32 as KeySym,
+                func: Some(quit as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+    ;
+    buttons = [
+        {
+            let mut init = Button {
+                click: ClkLtSymbol as libc::c_int as libc::c_uint,
+                mask: 0i32 as libc::c_uint,
+                button: 1i32 as libc::c_uint,
+                func: Some(setlayout as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkLtSymbol as libc::c_int as libc::c_uint,
+                mask: 0i32 as libc::c_uint,
+                button: 3i32 as libc::c_uint,
+                func: Some(setlayout as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    v: &*layouts.as_ptr().offset(2) as *const Layout as *const libc::c_void,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkWinTitle as libc::c_int as libc::c_uint,
+                mask: 0i32 as libc::c_uint,
+                button: 2i32 as libc::c_uint,
+                func: Some(zoom as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkStatusText as libc::c_int as libc::c_uint,
+                mask: 0i32 as libc::c_uint,
+                button: 2i32 as libc::c_uint,
+                func: Some(spawn as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg {
+                    v: termcmd.as_mut_ptr() as *const libc::c_void,
+                },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkClientWin as libc::c_int as libc::c_uint,
+                mask: (1i32 << 3i32) as libc::c_uint,
+                button: 1i32 as libc::c_uint,
+                func: Some(movemouse as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkClientWin as libc::c_int as libc::c_uint,
+                mask: (1i32 << 3i32) as libc::c_uint,
+                button: 2i32 as libc::c_uint,
+                func: Some(togglefloating as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkClientWin as libc::c_int as libc::c_uint,
+                mask: (1i32 << 3i32) as libc::c_uint,
+                button: 3i32 as libc::c_uint,
+                func: Some(resizemouse as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkTagBar as libc::c_int as libc::c_uint,
+                mask: 0i32 as libc::c_uint,
+                button: 1i32 as libc::c_uint,
+                func: Some(view as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkTagBar as libc::c_int as libc::c_uint,
+                mask: 0i32 as libc::c_uint,
+                button: 3i32 as libc::c_uint,
+                func: Some(toggleview as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkTagBar as libc::c_int as libc::c_uint,
+                mask: (1i32 << 3i32) as libc::c_uint,
+                button: 1i32 as libc::c_uint,
+                func: Some(tag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+        {
+            let mut init = Button {
+                click: ClkTagBar as libc::c_int as libc::c_uint,
+                mask: (1i32 << 3i32) as libc::c_uint,
+                button: 3i32 as libc::c_uint,
+                func: Some(toggletag as unsafe extern "C" fn(_: *const Arg) -> ()),
+                arg: Arg { i: 0i32 },
+            };
+            init
+        },
+    ]
+#[used]
+#[cfg_attr(target_os = "linux", link_section = ".init_array")]
+#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
+#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
 static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [run_static_initializers];
