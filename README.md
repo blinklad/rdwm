@@ -14,4 +14,5 @@ Other than happy hacking, I would love to make a minimalistic, dwm-inspired yet 
 ### Development dependencies
 1. Rust nightly
 2. Rust nightly-06-22 (for c2rust)
+3. intercept-build tools (eg. bear, cmake)
 
