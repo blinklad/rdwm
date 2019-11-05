@@ -1,16 +1,12 @@
-[workspace]
-
 [package]
-name = "c2rust"
-authors = ["C2Rust"]
-version = "0.0.0"
+name = "rdwm"
+version = "0.0.1"
+authors = ["Evan Harvey"]
 publish = false
 edition = "2018"
 
-[lib]
-name = "c2rust"
-path = "lib/c2rust-lib.rs"
-crate-type = ["lib", "staticlib"]
-
 [dependencies]
-libc = "0.2"
+log = "0.4"
+env_logger = "0.7.1"
+x11 = "2.18.1"
+libc = "0.2.28"
