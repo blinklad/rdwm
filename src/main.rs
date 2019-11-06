@@ -1,7 +1,16 @@
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
+
 use env_logger::WriteStyle::Auto;
+use libc::*;
+use std::sync::Mutex;
 use x11::xlib::*;
+
+lazy_static! {
+    static ref WM_DETECTED: Mutex<bool> = Mutex::new(false);
+}
 
 #[derive(Debug)]
 struct Rdwm {
@@ -26,18 +35,29 @@ impl Rdwm {
     }
 
     fn run(&self) {
-        let _wm_detected = false;
         unsafe {
             /* Safe because TODO */
             XSetErrorHandler(Some(Rdwm::on_wm_detected));
+
+            /* We want to register reparenting for root window - If erroneous, handler will notify */
+            XSelectInput(
+                self.display,
+                self.root,
+                SubstructureRedirectMask | SubstructureNotifyMask,
+            );
+
+            XSync(self.display, false as c_int);
         }
     }
 
     pub unsafe extern "C" fn on_wm_detected(
         _display: *mut Display,
         event: *mut XErrorEvent,
-    ) -> libc::c_int {
+    ) -> c_int {
         assert_ne!((*event).error_code, BadAccess);
+
+        let mut detected = WM_DETECTED.lock().unwrap();
+        *detected = true;
         0 /* This is ignored */
     }
 }
