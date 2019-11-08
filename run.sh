@@ -28,10 +28,10 @@ function start {
 			;;
 	esac
 
-	Xephyr -br -ac -noreset -screen 800x600 :2 &
+	Xephyr -br -ac -noreset -screen 800x600 :3 &
 	sleep 1
 	# DISPLAY=:2 $TEST_PROGRAM
-	RUST_LOG=$log exec "/home/blinklad/dev/rust/rdwm/target/debug/rdwm"
+	DISPLAY=:3 RUST_LOG=$log exec "/home/blinklad/dev/rust/rdwm/target/debug/rdwm"
 }
 
 function run {

@@ -56,6 +56,37 @@ impl Rdwm {
             XSync(self.display, false as c_int);
         }
 
+        // TODO This needs big fix
+        //unsafe {
+        //    /* This is certainly a gross amount of side effects that I hope XCB does better */
+        //    XGrabServer(self.display);
+        //    let (existing_root, existing_parent): (*mut Window, *mut Window) =
+        //        (std::mem::zeroed(), std::mem::zeroed());
+        //    let (existing_windows, num_existing): (*mut *mut Window, *mut c_uint) =
+        //        (std::mem::zeroed(), std::mem::zeroed());
+
+        //    assert!(
+        //        XQueryTree(
+        //            self.display,
+        //            self.root,
+        //            existing_root,
+        //            existing_parent,
+        //            existing_windows,
+        //            num_existing
+        //        ) != false as c_int,
+        //        "Could not obtain existing query tree"
+        //    );
+
+        //    assert_eq!(*existing_root, self.root);
+        //    let existing = std::slice::from_raw_parts(*existing_windows, *num_existing as usize);
+
+        //    for w in existing.iter() {
+        //        self.frame(w, true);
+        //    }
+        //    XFree(existing_windows as *mut _ as *mut c_void);
+        //    XUngrabServer(self.display);
+        //}
+
         loop {
             let mut event: XEvent = unsafe { std::mem::zeroed() };
             unsafe {
@@ -69,7 +100,7 @@ impl Rdwm {
                 match event.get_type() { /* TODO */
                 //  KeyPress =>
                 //  KeyRelease =>
-                //  ButtonPress =>
+                ButtonPress => self.on_button_press(&event.button),
                 //  ButtonRelease =>
                 //  MotionNotify =>
                 //  EnterNotify =>
@@ -130,6 +161,11 @@ impl Rdwm {
     fn on_unmap_notify(&mut self, event: &XUnmapEvent) {
         trace!("OnUnmapNotify event: {:#?}", *event);
 
+        if (*event).event == self.root {
+            info!("Ignoring UnmapNotify for existing window");
+            return;
+        }
+
         if let Some(client) = self.clients.get(&(*event).window) {
             unsafe {
                 XUnmapWindow(self.display, *client);
@@ -149,7 +185,16 @@ impl Rdwm {
         self.clients.remove(&(*event).window);
     }
 
+    fn on_button_press(&self, event: &XButtonEvent) {
+        trace!("OnButtonPress event: {:#?}", *event);
+    }
+
     fn on_map_request(&mut self, event: &XMapRequestEvent) {
+        self.frame(&(*event).window, false);
+        info!("OnMapRequest event: {:#?}", *event);
+    }
+
+    fn frame(&mut self, window: &Window, already_existing: bool) {
         let border_width: c_uint = 3;
         let border_color: c_ulong = 0xff0000;
         let bg_color: c_ulong = 0x0000ff;
@@ -157,10 +202,18 @@ impl Rdwm {
         let window_attributes = unsafe {
             /* Safe because mem::zeroed is well defined here & panic on bad request*/
             let mut attrs: XWindowAttributes = std::mem::zeroed();
-            let ok = XGetWindowAttributes(self.display, event.window, &mut attrs);
-            assert!(ok == 0 as c_int, "Could not acquire window attributes");
+            let ok = XGetWindowAttributes(self.display, *window, &mut attrs);
+            trace!("Window attributes: {:#?}", ok);
+            assert!(ok != 0, "Could not acquire window attributes");
             attrs
         };
+
+        if already_existing
+            && (window_attributes.override_redirect != 0
+                || window_attributes.map_state != IsViewable)
+        {
+            return;
+        }
 
         let frame = unsafe {
             XCreateSimpleWindow(
@@ -182,16 +235,25 @@ impl Rdwm {
                 frame,
                 SubstructureRedirectMask | SubstructureNotifyMask,
             );
-            XAddToSaveSet(self.display, (*event).window); /* offset */
-            XReparentWindow(self.display, (*event).window, frame, 0, 0);
+            XAddToSaveSet(self.display, *window); /* offset */
+            XReparentWindow(self.display, *window, frame, 0, 0);
             XMapWindow(self.display, frame);
+            XGrabButton(
+                self.display,
+                Button1,
+                ShiftMask,
+                *window,
+                0,
+                0,
+                GrabModeSync,
+                GrabModeSync,
+                *window,
+                0x0,
+            );
         }
 
-        self.clients.insert(event.window, frame);
-
-        info!("OnMapRequest event: {:#?}", *event);
+        self.clients.insert(*window, frame);
     }
-
     fn on_configure_request(&self, event: &XConfigureRequestEvent) {
         info!("OnConfigureRequest event: {:#?}", *event);
         let mut config = XWindowChanges {
