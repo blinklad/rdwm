@@ -5,6 +5,7 @@ extern crate lazy_static;
 
 use env_logger::WriteStyle::Auto;
 use libc::*;
+use std::collections::HashMap;
 use std::sync::Mutex;
 use x11::xlib::*;
 
@@ -16,6 +17,7 @@ lazy_static! {
 struct Rdwm {
     display: *mut Display,
     root: Window,
+    clients: HashMap<Window, Window>, /* Window -> Frame*/
 }
 
 impl Rdwm {
@@ -28,13 +30,18 @@ impl Rdwm {
             return None;
         }
         let root = unsafe { XDefaultRootWindow(display) };
+        let clients = HashMap::new();
 
         debug!("Display {:?} Root {:?}", display, root);
         info!("Display {:?} Root {:?}", display, root);
-        Some(Rdwm { display, root })
+        Some(Rdwm {
+            display,
+            root,
+            clients,
+        })
     }
 
-    fn run(&self) {
+    fn run(&mut self) {
         unsafe {
             /* Safe because TODO */
             XSetErrorHandler(Some(Rdwm::on_wm_detected));
@@ -48,13 +55,189 @@ impl Rdwm {
 
             XSync(self.display, false as c_int);
         }
+
+        loop {
+            let mut event: XEvent = unsafe { std::mem::zeroed() };
+            unsafe {
+                XNextEvent(self.display, &mut event);
+            }
+            info!("Received event: {:#?}", event);
+
+            #[allow(non_upper_case_globals)]
+            unsafe {
+                /* Safe because we know that the type of event dictates well-defined union member access */
+                match event.get_type() { /* TODO */
+                //  KeyPress =>
+                //  KeyRelease =>
+                //  ButtonPress =>
+                //  ButtonRelease =>
+                //  MotionNotify =>
+                //  EnterNotify =>
+                //  LeaveNotify =>
+                //  FocusIn =>
+                //  FocusOut =>
+                //  KeymapNotify =>
+                //  Expose =>
+                //  GraphicsExpose =>
+                //  NoExpose =>
+                //  VisibilityNotify =>
+                CreateNotify => self.on_create_notify(&event),
+                DestroyNotify => self.on_destroy_notify(&event.destroy_window),
+                UnmapNotify => self.on_unmap_notify(&event.unmap),
+                MapNotify => self.on_map_notify(&event.map),
+                MapRequest => self.on_map_request(&event.map_request),
+                ReparentNotify => self.on_reparent_notify(&event.reparent),
+                ConfigureNotify => self.on_configure_notify(&event.configure),
+                ConfigureRequest => self.on_configure_request(&event.configure_request),
+                //  GravityNotify =>
+                //  ResizeRequest =>
+                //  CirculateNotify =>
+                //  CirculateRequest =>
+                //  PropertyNotify =>
+                //  SelectionClear =>
+                //  SelectionRequest =>
+                //  SelectionNotify =>
+                //  ColormapNotify =>
+                //  ClientMessage =>
+                //  MappingNotify =>
+                //  GenericEvent =>
+                _ => unimplemented!(),
+                }
+            }
+        }
+    }
+
+    fn on_create_notify(&self, event: &XEvent) {
+        trace!("OnCreateNotify event: {:#?}", *event);
+    }
+
+    fn on_destroy_notify(&self, event: &XDestroyWindowEvent) {
+        trace!("XDestroyWindowEvent event: {:#?}", *event);
+    }
+
+    fn on_reparent_notify(&self, event: &XReparentEvent) {
+        trace!("OnReparentNotify event: {:#?}", *event);
+    }
+
+    fn on_map_notify(&self, event: &XMapEvent) {
+        trace!("OnMapNotify event: {:#?}", *event);
+    }
+
+    fn on_configure_notify(&self, event: &XConfigureEvent) {
+        trace!("OnConfigureNotify event: {:#?}", *event);
+    }
+
+    fn on_unmap_notify(&mut self, event: &XUnmapEvent) {
+        trace!("OnUnmapNotify event: {:#?}", *event);
+
+        if let Some(client) = self.clients.get(&(*event).window) {
+            unsafe {
+                XUnmapWindow(self.display, *client);
+                XReparentWindow(self.display, (*event).window, self.root, 0, 0);
+                XRemoveFromSaveSet(self.display, (*event).window);
+                XDestroyWindow(self.display, *client);
+                info!("Unframed client window: {:#?}", client);
+            }
+        } else {
+            info!(
+                "Ignoring UnmapNotify for non-client window: {:#?}",
+                event.window
+            );
+            return;
+        }
+
+        self.clients.remove(&(*event).window);
+    }
+
+    fn on_map_request(&mut self, event: &XMapRequestEvent) {
+        let border_width: c_uint = 3;
+        let border_color: c_ulong = 0xff0000;
+        let bg_color: c_ulong = 0x0000ff;
+
+        let window_attributes = unsafe {
+            /* Safe because mem::zeroed is well defined here & panic on bad request*/
+            let mut attrs: XWindowAttributes = std::mem::zeroed();
+            let ok = XGetWindowAttributes(self.display, event.window, &mut attrs);
+            assert!(ok == 0 as c_int, "Could not acquire window attributes");
+            attrs
+        };
+
+        let frame = unsafe {
+            XCreateSimpleWindow(
+                self.display,
+                self.root,
+                window_attributes.x,
+                window_attributes.y,
+                window_attributes.width as c_uint,
+                window_attributes.height as c_uint,
+                border_width,
+                border_color,
+                bg_color,
+            )
+        };
+
+        unsafe {
+            XSelectInput(
+                self.display,
+                frame,
+                SubstructureRedirectMask | SubstructureNotifyMask,
+            );
+            XAddToSaveSet(self.display, (*event).window); /* offset */
+            XReparentWindow(self.display, (*event).window, frame, 0, 0);
+            XMapWindow(self.display, frame);
+        }
+
+        self.clients.insert(event.window, frame);
+
+        info!("OnMapRequest event: {:#?}", *event);
+    }
+
+    fn on_configure_request(&self, event: &XConfigureRequestEvent) {
+        info!("OnConfigureRequest event: {:#?}", *event);
+        let mut config = XWindowChanges {
+            x: event.x,
+            y: event.y,
+            width: event.width,
+            height: event.height,
+            border_width: event.border_width,
+            sibling: event.above,
+            stack_mode: event.detail,
+        };
+        debug!("XWindowChanges: {:#?}", config);
+
+        if let Some(frame) = self.clients.get(&(*event).window) {
+            /* re-configure existing frame / decorations */
+            unsafe {
+                XConfigureWindow(self.display, *frame, event.value_mask as u32, &mut config);
+            };
+        }
+        /* configure client window */
+        unsafe {
+            XConfigureWindow(
+                self.display,
+                event.window,
+                event.value_mask as u32,
+                &mut config,
+            );
+        };
+
+        info!(
+            "Resize window: {:#?} to {{ x: {} y: {} }}",
+            event.window, event.width, event.height
+        );
     }
 
     pub unsafe extern "C" fn on_wm_detected(
         _display: *mut Display,
         event: *mut XErrorEvent,
     ) -> c_int {
-        assert_ne!((*event).error_code, BadAccess);
+        assert_eq!(
+            (*event).error_code,
+            BadAccess,
+            "Expected BadAccess error code OnWMDetected"
+        );
+
+        error!("Another window manager detected");
 
         let mut detected = WM_DETECTED.lock().unwrap();
         *detected = true;
@@ -77,7 +260,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .write_style(Auto)
         .init();
     info!("Starting logger OK");
-    let rdwm = Rdwm::init()
+    let mut rdwm = Rdwm::init()
         .ok_or("could not connect to display server")
         .unwrap();
     info!("Starting display server OK");
