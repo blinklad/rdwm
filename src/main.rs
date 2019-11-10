@@ -20,6 +20,20 @@ struct Rdwm {
     clients: HashMap<Window, Window>, /* Window -> Frame*/
 }
 
+#[derive(Debug)]
+struct Monitor {
+    screen: Quad,
+    window: Quad,
+}
+
+#[derive(Debug)]
+struct Quad {
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
+}
+
 impl Rdwm {
     fn init() -> Option<Self> {
         let display = unsafe {
@@ -230,8 +244,8 @@ impl Rdwm {
             XCreateSimpleWindow(
                 self.display,
                 self.root,
-                window_attributes.x,
-                window_attributes.y,
+                0,
+                0,
                 window_attributes.width as c_uint,
                 window_attributes.height as c_uint,
                 border_width,
@@ -240,6 +254,9 @@ impl Rdwm {
             )
         };
 
+        unsafe {
+            XResizeWindow(self.display, *window, 800, 1080);
+        }
         unsafe {
             XSelectInput(
                 self.display,
