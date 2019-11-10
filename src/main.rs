@@ -33,7 +33,6 @@ impl Rdwm {
         let clients = HashMap::new();
 
         debug!("Display {:?} Root {:?}", display, root);
-        info!("Display {:?} Root {:?}", display, root);
         Some(Rdwm {
             display,
             root,
@@ -56,43 +55,51 @@ impl Rdwm {
             XSync(self.display, false as c_int);
         }
 
-        // TODO This needs big fix
-        //unsafe {
-        //    /* This is certainly a gross amount of side effects that I hope XCB does better */
-        //    XGrabServer(self.display);
-        //    let (existing_root, existing_parent): (*mut Window, *mut Window) =
-        //        (std::mem::zeroed(), std::mem::zeroed());
-        //    let (existing_windows, num_existing): (*mut *mut Window, *mut c_uint) =
-        //        (std::mem::zeroed(), std::mem::zeroed());
+        unsafe {
+            /* This is certainly a gross amount of side effects that I hope XCB does better */
+            XGrabServer(self.display);
+            let (mut existing_root, mut existing_parent): (Window, Window) =
+                (std::mem::zeroed(), std::mem::zeroed());
+            let (mut existing_windows, mut num_existing): (*mut Window, c_uint) =
+                (std::mem::zeroed(), std::mem::zeroed());
+            trace!(
+                "Root: {:#?} Parent: {:#?} Windows: {:#?} Number of existing: {:#?}",
+                existing_root,
+                existing_parent,
+                existing_windows,
+                num_existing
+            );
+            assert!(
+                XQueryTree(
+                    self.display,
+                    self.root,
+                    &mut existing_root,
+                    &mut existing_parent,
+                    &mut existing_windows,
+                    &mut num_existing
+                ) != false as c_int,
+                "Could not obtain existing query tree"
+            );
 
-        //    assert!(
-        //        XQueryTree(
-        //            self.display,
-        //            self.root,
-        //            existing_root,
-        //            existing_parent,
-        //            existing_windows,
-        //            num_existing
-        //        ) != false as c_int,
-        //        "Could not obtain existing query tree"
-        //    );
+            assert_eq!(existing_root, self.root);
+            let existing = std::slice::from_raw_parts(existing_windows, num_existing as usize);
 
-        //    assert_eq!(*existing_root, self.root);
-        //    let existing = std::slice::from_raw_parts(*existing_windows, *num_existing as usize);
-
-        //    for w in existing.iter() {
-        //        self.frame(w, true);
-        //    }
-        //    XFree(existing_windows as *mut _ as *mut c_void);
-        //    XUngrabServer(self.display);
-        //}
+            for w in existing.iter() {
+                self.frame(w, true);
+            }
+            XFree(existing_windows as *mut _ as *mut c_void);
+            XUngrabServer(self.display);
+        }
 
         loop {
+            if *WM_DETECTED.lock().unwrap() == true {
+                return;
+            }
+
             let mut event: XEvent = unsafe { std::mem::zeroed() };
             unsafe {
                 XNextEvent(self.display, &mut event);
             }
-            info!("Received event: {:#?}", event);
 
             #[allow(non_upper_case_globals)]
             unsafe {
@@ -196,8 +203,8 @@ impl Rdwm {
 
     fn frame(&mut self, window: &Window, already_existing: bool) {
         let border_width: c_uint = 3;
-        let border_color: c_ulong = 0xff0000;
-        let bg_color: c_ulong = 0x0000ff;
+        let border_color: c_ulong = 0x316d4c;
+        let bg_color: c_ulong = 0x5f316d;
 
         let window_attributes = unsafe {
             /* Safe because mem::zeroed is well defined here & panic on bad request*/
@@ -212,6 +219,10 @@ impl Rdwm {
             && (window_attributes.override_redirect != 0
                 || window_attributes.map_state != IsViewable)
         {
+            trace!(
+                "Window already exists or map state is not viewable: {:#?}",
+                window
+            );
             return;
         }
 
@@ -238,6 +249,7 @@ impl Rdwm {
             XAddToSaveSet(self.display, *window); /* offset */
             XReparentWindow(self.display, *window, frame, 0, 0);
             XMapWindow(self.display, frame);
+            XMapWindow(self.display, *window);
             XGrabButton(
                 self.display,
                 Button1,
@@ -294,9 +306,12 @@ impl Rdwm {
         event: *mut XErrorEvent,
     ) -> c_int {
         assert_eq!(
+            /* Currently panics with SIGILL, until more errors are handled */
             (*event).error_code,
             BadAccess,
-            "Expected BadAccess error code OnWMDetected"
+            "Expected BadAccess error code OnWMDetected;
+            Error handler not implemented for code: {:#?}",
+            Rdwm::err_code_pretty((*event).error_code)
         );
 
         error!("Another window manager detected");
@@ -304,6 +319,32 @@ impl Rdwm {
         let mut detected = WM_DETECTED.lock().unwrap();
         *detected = true;
         0 /* This is ignored */
+    }
+
+    fn err_code_pretty(code: c_uchar) -> &'static str {
+        match code {
+            0 => "Success",
+            1 => "BadRequest",
+            2 => "BadValue",
+            3 => "BadWindow",
+            4 => "BadPixmap",
+            5 => "BadAtom",
+            6 => "BadCursor",
+            7 => "BadFont",
+            8 => "BadMatch",
+            9 => "BadDrawable",
+            10 => "BadAccess",
+            11 => "BadAlloc",
+            12 => "BadColor",
+            13 => "BadGC",
+            14 => "BadIDChoice",
+            15 => "BadName",
+            16 => "BadLength",
+            17 => "BadImplementation",
+            128 => "FirstExtensionError",
+            255 => "LastExtensionError",
+            _ => "Unknown error code",
+        }
     }
 }
 
