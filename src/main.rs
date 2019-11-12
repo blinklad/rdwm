@@ -8,6 +8,7 @@ use libc::*;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use x11::xlib::*;
+type XWindow = x11::xlib::Window;
 
 lazy_static! {
     static ref WM_DETECTED: Mutex<bool> = Mutex::new(false);
@@ -16,17 +17,34 @@ lazy_static! {
 #[derive(Debug)]
 struct Rdwm {
     display: *mut Display,
-    root: Window,
-    clients: HashMap<Window, Window>, /* Window -> Frame*/
+    root: XWindow,
+    clients: HashMap<XWindow, XWindow>, /* Window -> Frame*/
 }
 
 #[derive(Debug)]
 struct Monitor {
-    screen: Quad,
-    window: Quad,
+    clients: Vec<Window>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+struct Frame {
+    context: Window,
+    child: Option<Window>,
+}
+
+#[derive(Debug, Clone)]
+struct Window {
+    attrs: Attributes,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Attributes {
+    screen: Quad,
+    window: Quad,
+    details: XWindow,
+}
+
+#[derive(Debug, Clone, Copy)]
 struct Quad {
     x: u32,
     y: u32,
@@ -72,17 +90,10 @@ impl Rdwm {
         unsafe {
             /* This is certainly a gross amount of side effects that I hope XCB does better */
             XGrabServer(self.display);
-            let (mut existing_root, mut existing_parent): (Window, Window) =
+            let (mut existing_root, mut existing_parent): (XWindow, XWindow) =
                 (std::mem::zeroed(), std::mem::zeroed());
-            let (mut existing_windows, mut num_existing): (*mut Window, c_uint) =
+            let (mut existing_windows, mut num_existing): (*mut XWindow, c_uint) =
                 (std::mem::zeroed(), std::mem::zeroed());
-            trace!(
-                "Root: {:#?} Parent: {:#?} Windows: {:#?} Number of existing: {:#?}",
-                existing_root,
-                existing_parent,
-                existing_windows,
-                num_existing
-            );
             assert!(
                 XQueryTree(
                     self.display,
@@ -93,6 +104,14 @@ impl Rdwm {
                     &mut num_existing
                 ) != false as c_int,
                 "Could not obtain existing query tree"
+            );
+
+            trace!(
+                "Root: {:#?} Parent: {:#?} Windows: {:#?} Number of existing: {:#?}",
+                existing_root,
+                existing_parent,
+                existing_windows,
+                num_existing
             );
 
             assert_eq!(existing_root, self.root);
@@ -215,13 +234,13 @@ impl Rdwm {
         info!("OnMapRequest event: {:#?}", *event);
     }
 
-    fn frame(&mut self, window: &Window, already_existing: bool) {
+    fn frame(&mut self, window: &XWindow, already_existing: bool) {
         let border_width: c_uint = 3;
         let border_color: c_ulong = 0x316d4c;
         let bg_color: c_ulong = 0x5f316d;
 
         let window_attributes = unsafe {
-            /* Safe because mem::zeroed is well defined here & panic on bad request*/
+            /* Safe as XGetWindowAttributes will write _something_ to result, and panic on bad request */
             let mut attrs: XWindowAttributes = std::mem::zeroed();
             let ok = XGetWindowAttributes(self.display, *window, &mut attrs);
             trace!("Window attributes: {:#?}", ok);
