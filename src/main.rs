@@ -2,10 +2,10 @@
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
-
+#[macro_use]
+extern crate bitflags;
 use env_logger::WriteStyle::Auto;
 use libc::*;
-use std::collections::HashMap;
 use std::sync::Mutex;
 use x11::xlib::*;
 type XWindow = x11::xlib::Window;
@@ -14,42 +14,118 @@ lazy_static! {
     static ref WM_DETECTED: Mutex<bool> = Mutex::new(false);
 }
 
+bitflags! {
+    struct WindowFlags: u32 {
+        const NONE        = 0b00000000;
+        const FIXED       = 0b00000001;
+        const FLOATING    = 0b00000010;
+        const URGENT      = 0b00000100;
+        const FULLSCREEN  = 0b00001000;
+        const NEVER_FOCUS = 0b00010000;
+    }
+}
+
 #[derive(Debug)]
 struct Rdwm {
     display: *mut Display,
     root: XWindow,
-    clients: HashMap<XWindow, XWindow>, /* Window -> Frame*/
+    workspaces: Vec<Workspace>,
+    current: usize,
+}
+
+impl Rdwm {
+    fn get_current(&self) -> Option<&Workspace> {
+        self.workspaces.get(self.current)
+    }
+
+    fn get_mut_current(&mut self) -> Option<&mut Workspace> {
+        self.workspaces.get_mut(self.current)
+    }
 }
 
 #[derive(Debug)]
-struct Monitor {
-    clients: Vec<Window>,
+struct Workspace {
+    number: u32,
+    clients: Vec<Client>,
+    selected: Option<Client>,
 }
 
-#[derive(Debug, Clone)]
-struct Frame {
+impl Workspace {
+    fn init() -> Self {
+        Workspace {
+            number: 0,
+            clients: Vec::new(),
+            selected: None,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Client {
+    name: String,
+    frame: Window,
     context: Window,
-    child: Option<Window>,
+    flags: WindowFlags,
+}
+
+impl Client {
+    fn new(
+        name: String,
+        frame: XWindow,
+        context: XWindow,
+        attrs: &XWindowAttributes,
+        flags: WindowFlags,
+    ) -> Self {
+        let client = Client {
+            name,
+            frame: Window::new(frame, attrs),
+            context: Window::new(context, attrs),
+            flags,
+        };
+        trace!("Created client: {:#?}", client);
+        client
+    }
 }
 
 #[derive(Debug, Clone)]
 struct Window {
+    id: XWindow,
     attrs: Attributes,
+}
+
+impl Window {
+    fn new(id: XWindow, attrs: &XWindowAttributes) -> Self {
+        Window {
+            id,
+            attrs: Attributes::new(&attrs),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 struct Attributes {
-    screen: Quad,
     window: Quad,
-    details: XWindow,
+}
+
+impl Attributes {
+    fn new(attrs: &XWindowAttributes) -> Self {
+        Attributes {
+            window: Quad {
+                x: attrs.x,
+                y: attrs.y,
+                h: attrs.height,
+                w: attrs.width,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 struct Quad {
-    x: u32,
-    y: u32,
-    w: u32,
-    h: u32,
+    x: c_int,
+    y: c_int,
+    w: c_int,
+    h: c_int,
 }
 
 impl Rdwm {
@@ -62,22 +138,25 @@ impl Rdwm {
             return None;
         }
         let root = unsafe { XDefaultRootWindow(display) };
-        let clients = HashMap::new();
+        let mut workspaces = Vec::new();
+        let cur_workspace = Workspace::init();
+        workspaces.push(cur_workspace);
 
         debug!("Display {:?} Root {:?}", display, root);
         Some(Rdwm {
             display,
             root,
-            clients,
+            workspaces,
+            current: 0,
         })
     }
 
     fn run(&mut self) {
         unsafe {
-            /* Safe because TODO */
+            /* Safe as panics on errors that aren't handled properly yet */
             XSetErrorHandler(Some(Rdwm::on_wm_detected));
 
-            /* We want to register reparenting for root window - If erroneous, handler will notify */
+            /* We want to register reparenting for root window - If erroneous, handler will notify & exit */
             XSelectInput(
                 self.display,
                 self.root,
@@ -88,7 +167,7 @@ impl Rdwm {
         }
 
         unsafe {
-            /* This is certainly a gross amount of side effects that I hope XCB does better */
+            /* mem::zeroed is safe because XQueryTree will always write something, and panic on bad request */
             XGrabServer(self.display);
             let (mut existing_root, mut existing_parent): (XWindow, XWindow) =
                 (std::mem::zeroed(), std::mem::zeroed());
@@ -206,12 +285,18 @@ impl Rdwm {
             return;
         }
 
-        if let Some(client) = self.clients.get(&(*event).window) {
+        if let Some(client) = self
+            .get_current()
+            .expect("No workspaces")
+            .clients
+            .iter()
+            .find(|c| (*c).context.id == (*event).window)
+        {
             unsafe {
-                XUnmapWindow(self.display, *client);
+                XUnmapWindow(self.display, client.context.id);
                 XReparentWindow(self.display, (*event).window, self.root, 0, 0);
                 XRemoveFromSaveSet(self.display, (*event).window);
-                XDestroyWindow(self.display, *client);
+                XDestroyWindow(self.display, client.context.id);
                 info!("Unframed client window: {:#?}", client);
             }
         } else {
@@ -222,7 +307,10 @@ impl Rdwm {
             return;
         }
 
-        self.clients.remove(&(*event).window);
+        self.get_mut_current()
+            .unwrap()
+            .clients
+            .remove((*event).window as usize);
     }
 
     fn on_button_press(&self, event: &XButtonEvent) {
@@ -300,7 +388,21 @@ impl Rdwm {
             );
         }
 
-        self.clients.insert(*window, frame);
+        self.get_mut_current()
+            .expect("No current")
+            .clients
+            .push(Client::new(
+                String::from("0"),
+                frame,
+                *window,
+                &window_attributes,
+                WindowFlags::NONE,
+            ));
+
+        trace!(
+            "Created client: {:#?}",
+            self.get_current().expect("No current").clients[0]
+        );
     }
     fn on_configure_request(&self, event: &XConfigureRequestEvent) {
         info!("OnConfigureRequest event: {:#?}", *event);
@@ -313,28 +415,50 @@ impl Rdwm {
             sibling: event.above,
             stack_mode: event.detail,
         };
-        debug!("XWindowChanges: {:#?}", config);
-
-        if let Some(frame) = self.clients.get(&(*event).window) {
-            /* re-configure existing frame / decorations */
-            unsafe {
-                XConfigureWindow(self.display, *frame, event.value_mask as u32, &mut config);
-            };
-        }
-        /* configure client window */
-        unsafe {
-            XConfigureWindow(
-                self.display,
-                event.window,
-                event.value_mask as u32,
-                &mut config,
-            );
-        };
-
-        info!(
-            "Resize window: {:#?} to {{ x: {} y: {} }}",
-            event.window, event.width, event.height
+        debug!(
+            "XWindowChanges: {:#?} for Window: {:#?}",
+            config,
+            (*event).window
         );
+
+        println!(
+            "Current: {:#?} Clients: {:#?}",
+            self.get_current().unwrap(),
+            self.get_current().unwrap().clients
+        );
+
+        if let Some(client) = self
+            .get_current()
+            .expect("No current")
+            .clients
+            .iter()
+            .find(|c| c.context.id == (*event).window)
+        {
+            /* re-configure existing frame */
+            unsafe {
+                XConfigureWindow(
+                    self.display,
+                    client.frame.id,
+                    event.value_mask as u32,
+                    &mut config,
+                );
+            };
+            /* configure client window */
+            unsafe {
+                XConfigureWindow(
+                    self.display,
+                    event.window,
+                    event.value_mask as u32,
+                    &mut config,
+                );
+            };
+            info!(
+                "Resize window: {:#?} to {{ x: {} y: {} }}",
+                event.window, event.width, event.height
+            );
+        } else {
+            trace!("Couldn't find client: {:#?}", (*event).window);
+        }
     }
 
     pub unsafe extern "C" fn on_wm_detected(
