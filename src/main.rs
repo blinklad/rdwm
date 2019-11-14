@@ -76,14 +76,12 @@ impl Client {
         attrs: &XWindowAttributes,
         flags: WindowFlags,
     ) -> Self {
-        let client = Client {
+        Client {
             name,
             frame: Window::new(frame, attrs),
             context: Window::new(context, attrs),
             flags,
-        };
-        trace!("Created client: {:#?}", client);
-        client
+        }
     }
 }
 
@@ -421,12 +419,6 @@ impl Rdwm {
             (*event).window
         );
 
-        println!(
-            "Current: {:#?} Clients: {:#?}",
-            self.get_current().unwrap(),
-            self.get_current().unwrap().clients
-        );
-
         if let Some(client) = self
             .get_current()
             .expect("No current")
@@ -443,22 +435,20 @@ impl Rdwm {
                     &mut config,
                 );
             };
-            /* configure client window */
-            unsafe {
-                XConfigureWindow(
-                    self.display,
-                    event.window,
-                    event.value_mask as u32,
-                    &mut config,
-                );
-            };
-            info!(
-                "Resize window: {:#?} to {{ x: {} y: {} }}",
-                event.window, event.width, event.height
-            );
-        } else {
-            trace!("Couldn't find client: {:#?}", (*event).window);
         }
+        /* configure client window */
+        unsafe {
+            XConfigureWindow(
+                self.display,
+                event.window,
+                event.value_mask as u32,
+                &mut config,
+            );
+        };
+        info!(
+            "Resize window: {:#?} to {{ x: {} y: {} }}",
+            event.window, event.width, event.height
+        );
     }
 
     pub unsafe extern "C" fn on_wm_detected(
