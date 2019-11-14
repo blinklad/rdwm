@@ -9,3 +9,6 @@ Ideally this project would use XCB, as well.
 The provided [build script](run.sh) should work, as long as you have:
 1. Xephyr
 2. Xterm (or another simple X program, eg. Xeyes)
+
+## TODO
+Currently, RDWM is implemented using ```xlib``` for simplicity. It will be changed to use ```xcb``` later on once the core abstractions are set in stone. 
