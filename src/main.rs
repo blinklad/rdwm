@@ -45,18 +45,30 @@ impl Rdwm {
 
 #[derive(Debug)]
 struct Workspace {
-    number: u32,
+    number: usize,
     clients: Vec<Client>,
-    selected: Option<Client>,
+    selected: usize,
+    screen: Quad,
 }
 
 impl Workspace {
-    fn init() -> Self {
+    fn init(number: usize, screen: Quad) -> Self {
         Workspace {
-            number: 0,
+            number,
             clients: Vec::new(),
-            selected: None,
+            selected: 0,
+            screen,
         }
+    }
+
+    #[allow(dead_code)]
+    fn get_selected(&self) -> Option<&Client> {
+        self.clients.get(self.selected)
+    }
+
+    #[allow(dead_code)]
+    fn get_mut_selected(&mut self) -> Option<&mut Client> {
+        self.clients.get_mut(self.selected)
     }
 }
 
@@ -120,10 +132,31 @@ impl Attributes {
 
 #[derive(Debug, Clone, Copy)]
 struct Quad {
-    x: c_int,
-    y: c_int,
-    w: c_int,
-    h: c_int,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+}
+
+impl Quad {
+    fn default() -> Self {
+        Quad {
+            x: 0,
+            y: 0,
+            w: 0,
+            h: 0,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn from_size(h: i32, w: i32) -> Self {
+        Quad { x: 0, y: 0, w, h }
+    }
+
+    #[allow(dead_code)]
+    fn from_coords(x: i32, y: i32) -> Self {
+        Quad { x, y, h: 0, w: 0 }
+    }
 }
 
 impl Rdwm {
@@ -137,7 +170,7 @@ impl Rdwm {
         }
         let root = unsafe { XDefaultRootWindow(display) };
         let mut workspaces = Vec::new();
-        let cur_workspace = Workspace::init();
+        let cur_workspace = Workspace::init(0, Quad::default()); // TODO
         workspaces.push(cur_workspace);
 
         debug!("Display {:?} Root {:?}", display, root);
