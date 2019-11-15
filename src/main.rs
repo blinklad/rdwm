@@ -72,6 +72,32 @@ impl Workspace {
     fn get_mut_selected(&mut self) -> Option<&mut Client> {
         self.clients.get_mut(self.selected)
     }
+
+    /* TODO Move simple tiling logic here */
+    fn arrange(&self, display: *mut Display) {
+        for (num, client) in self.clients.iter().enumerate() {
+            trace!("{{ Num: {:#?} Client: {:#?} }}", num, *client);
+            unsafe {
+                XMoveResizeWindow(
+                    display,
+                    client.frame.id,
+                    ((num) * (*client).frame.attrs.window.w as usize / 2) as i32,
+                    0,
+                    self.screen.w / (self.clients.len() as u32),
+                    self.screen.h,
+                );
+
+                XMoveResizeWindow(
+                    display,
+                    client.context.id,
+                    ((num) * (*client).context.attrs.window.w as usize / 2) as i32,
+                    0,
+                    self.screen.w / (self.clients.len() as u32),
+                    self.screen.h,
+                );
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -87,13 +113,14 @@ impl Client {
         name: String,
         frame: XWindow,
         context: XWindow,
-        attrs: &XWindowAttributes,
+        hints: &XWindowAttributes,
+        attrs: &Quad,
         flags: WindowFlags,
     ) -> Self {
         Client {
             name,
-            frame: Window::new(frame, attrs),
-            context: Window::new(context, attrs),
+            frame: Window::new(frame, attrs, hints),
+            context: Window::new(context, attrs, hints),
             flags,
         }
     }
@@ -102,14 +129,16 @@ impl Client {
 #[derive(Debug, Clone)]
 struct Window {
     id: XWindow,
+    hints: Attributes,
     attrs: Attributes,
 }
 
 impl Window {
-    fn new(id: XWindow, attrs: &XWindowAttributes) -> Self {
+    fn new(id: XWindow, attrs: &Quad, hints: &XWindowAttributes) -> Self {
         Window {
             id,
-            attrs: Attributes::new(&attrs),
+            hints: Attributes::new(&hints),
+            attrs: Attributes::tiling(attrs),
         }
     }
 }
@@ -128,6 +157,12 @@ impl Attributes {
                 h: attrs.height as u32,
                 w: attrs.width as u32,
             },
+        }
+    }
+
+    fn tiling(attrs: &Quad) -> Self {
+        Attributes {
+            window: attrs.clone(),
         }
     }
 }
@@ -401,13 +436,6 @@ impl Rdwm {
 
         let workspace = self.get_current().unwrap();
 
-        // TODO _Very_ temporary; this logic needs to live somewhere
-        let y: i32 = match workspace.clients.len() {
-            0 => 0,
-            1 => (workspace.screen.w / 2 + 5) as i32, // border = 5 for now
-            _ => 0,
-        };
-
         let x: i32 = match workspace.clients.len() {
             0 => 0,
             1 => (workspace.screen.w / 2) as i32, // border = 5 for now
@@ -460,6 +488,11 @@ impl Rdwm {
             );
         }
 
+        let (h, w) = (
+            self.get_current().expect("No current").screen.h,
+            self.get_current().expect("No current").screen.w,
+        );
+
         self.get_mut_current()
             .expect("No current")
             .clients
@@ -468,8 +501,13 @@ impl Rdwm {
                 frame,
                 *window,
                 &window_attributes,
+                &Quad::from_size(h, w),
                 WindowFlags::NONE,
             ));
+
+        self.get_current()
+            .expect("No current")
+            .arrange(self.display);
 
         trace!(
             "Created client: {:#?}",
