@@ -4,6 +4,7 @@ extern crate log;
 extern crate lazy_static;
 #[macro_use]
 extern crate bitflags;
+
 use env_logger::WriteStyle::Auto;
 use libc::*;
 use std::sync::Mutex;
@@ -11,6 +12,7 @@ use x11::xlib::*;
 type XWindow = x11::xlib::Window;
 
 lazy_static! {
+    /* TODO This could be a RefCell or any single-threaded sync primitive */
     static ref WM_DETECTED: Mutex<bool> = Mutex::new(false);
 }
 
@@ -121,10 +123,10 @@ impl Attributes {
     fn new(attrs: &XWindowAttributes) -> Self {
         Attributes {
             window: Quad {
-                x: attrs.x,
-                y: attrs.y,
-                h: attrs.height,
-                w: attrs.width,
+                x: attrs.x as u32,
+                y: attrs.y as u32,
+                h: attrs.height as u32,
+                w: attrs.width as u32,
             },
         }
     }
@@ -132,13 +134,14 @@ impl Attributes {
 
 #[derive(Debug, Clone, Copy)]
 struct Quad {
-    x: i32,
-    y: i32,
-    w: i32,
-    h: i32,
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
 }
 
 impl Quad {
+    #[allow(dead_code)]
     fn default() -> Self {
         Quad {
             x: 0,
@@ -149,12 +152,12 @@ impl Quad {
     }
 
     #[allow(dead_code)]
-    fn from_size(h: i32, w: i32) -> Self {
+    fn from_size(h: u32, w: u32) -> Self {
         Quad { x: 0, y: 0, w, h }
     }
 
     #[allow(dead_code)]
-    fn from_coords(x: i32, y: i32) -> Self {
+    fn from_coords(x: u32, y: u32) -> Self {
         Quad { x, y, h: 0, w: 0 }
     }
 }
@@ -165,15 +168,33 @@ impl Rdwm {
             /* Safe because no side effects at this point */
             XOpenDisplay(std::ptr::null())
         };
+
         if display.is_null() {
             return None;
         }
+        let screen = unsafe { XScreenOfDisplay(display, 0) };
+
+        if screen as *mut _ == std::ptr::null_mut() {
+            panic!("No screens associated with display");
+        }
+
+        /* TODO Screen indices _may_ work differently outside Xephyr */
         let root = unsafe { XDefaultRootWindow(display) };
         let mut workspaces = Vec::new();
-        let cur_workspace = Workspace::init(0, Quad::default()); // TODO
+        let cur_workspace = unsafe {
+            Workspace::init(
+                0,
+                Quad::from_size((*screen).height as u32, (*screen).width as u32),
+            )
+        };
+
+        debug!(
+            "Display {:#?}\nRoot {:#?}\nSize:{:#?}",
+            display, root, cur_workspace.screen
+        );
+
         workspaces.push(cur_workspace);
 
-        debug!("Display {:?} Root {:?}", display, root);
         Some(Rdwm {
             display,
             root,
@@ -378,14 +399,29 @@ impl Rdwm {
             return;
         }
 
+        let workspace = self.get_current().unwrap();
+
+        // TODO _Very_ temporary; this logic needs to live somewhere
+        let y: i32 = match workspace.clients.len() {
+            0 => 0,
+            1 => (workspace.screen.w / 2 + 5) as i32, // border = 5 for now
+            _ => 0,
+        };
+
+        let x: i32 = match workspace.clients.len() {
+            0 => 0,
+            1 => (workspace.screen.w / 2) as i32, // border = 5 for now
+            _ => 0,
+        };
+
         let frame = unsafe {
             XCreateSimpleWindow(
                 self.display,
                 self.root,
+                x,
                 0,
-                0,
-                window_attributes.width as c_uint,
-                window_attributes.height as c_uint,
+                (workspace.screen.w / 2) as c_uint,
+                (workspace.screen.h) as c_uint,
                 border_width,
                 border_color,
                 bg_color,
@@ -393,7 +429,12 @@ impl Rdwm {
         };
 
         unsafe {
-            XResizeWindow(self.display, *window, 800, 1080);
+            XResizeWindow(
+                self.display,
+                *window,
+                workspace.screen.w / 2,
+                workspace.screen.h,
+            );
         }
         unsafe {
             XSelectInput(
