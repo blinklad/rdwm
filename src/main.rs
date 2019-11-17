@@ -73,6 +73,65 @@ impl Workspace {
         self.clients.get_mut(self.selected)
     }
 
+    #[allow(dead_code)]
+    fn create_window(
+        &mut self,
+        display: *mut Display,
+        root: &XWindow,
+        attrs: &XWindowAttributes,
+        window: &XWindow,
+    ) {
+        unsafe {
+            let border_width: c_uint = 3;
+            let border_color: c_ulong = 0x316d4c;
+            let bg_color: c_ulong = 0x5f316d;
+
+            let frame = XCreateSimpleWindow(
+                display,
+                *root,
+                0, /* x */
+                0,
+                (self.screen.w / 2) as c_uint,
+                (self.screen.h) as c_uint,
+                border_width,
+                border_color,
+                bg_color,
+            );
+
+            XResizeWindow(display, *window, self.screen.w / 2, self.screen.h);
+            XSelectInput(
+                display,
+                frame,
+                SubstructureRedirectMask | SubstructureNotifyMask,
+            );
+
+            XReparentWindow(display, *window, frame, 0, 0);
+            XMapWindow(display, frame);
+            XMapWindow(display, *window);
+            XGrabButton(
+                display,
+                Button1,
+                ShiftMask,
+                *window,
+                0,
+                0,
+                GrabModeSync,
+                GrabModeSync,
+                *window,
+                0x0,
+            );
+
+            self.clients.push(Client::new(
+                String::from("0"),
+                frame,
+                *window,
+                &attrs,
+                &Quad::from_size(self.screen.h, self.screen.w),
+                WindowFlags::NONE,
+            ));
+        }
+    }
+
     /* TODO Move simple tiling logic here */
     fn arrange(&self, display: *mut Display) {
         for (num, client) in self.clients.iter().enumerate() {
@@ -410,10 +469,6 @@ impl Rdwm {
     }
 
     fn frame(&mut self, window: &XWindow, already_existing: bool) {
-        let border_width: c_uint = 3;
-        let border_color: c_ulong = 0x316d4c;
-        let bg_color: c_ulong = 0x5f316d;
-
         let window_attributes = unsafe {
             /* Safe as XGetWindowAttributes will write _something_ to result, and panic on bad request */
             let mut attrs: XWindowAttributes = std::mem::zeroed();
@@ -428,82 +483,26 @@ impl Rdwm {
                 || window_attributes.map_state != IsViewable)
         {
             trace!(
-                "Window already exists or map state is not viewable: {:#?}",
+                "Window already exists, map state is not viewable, or override redirect set: {:#?}",
                 window
             );
             return;
-        }
-
-        let workspace = self.get_current().unwrap();
-
-        let x: i32 = match workspace.clients.len() {
-            0 => 0,
-            1 => (workspace.screen.w / 2) as i32, // border = 5 for now
-            _ => 0,
         };
 
-        let frame = unsafe {
-            XCreateSimpleWindow(
-                self.display,
-                self.root,
-                x,
-                0,
-                (workspace.screen.w / 2) as c_uint,
-                (workspace.screen.h) as c_uint,
-                border_width,
-                border_color,
-                bg_color,
-            )
-        };
+        /* Cloning for now even though its safe to borrow */
+        let display_copy = self.display.clone();
+        let root_copy = self.root.clone();
 
-        unsafe {
-            XResizeWindow(
-                self.display,
-                *window,
-                workspace.screen.w / 2,
-                workspace.screen.h,
-            );
-        }
-        unsafe {
-            XSelectInput(
-                self.display,
-                frame,
-                SubstructureRedirectMask | SubstructureNotifyMask,
-            );
-            XAddToSaveSet(self.display, *window); /* offset */
-            XReparentWindow(self.display, *window, frame, 0, 0);
-            XMapWindow(self.display, frame);
-            XMapWindow(self.display, *window);
-            XGrabButton(
-                self.display,
-                Button1,
-                ShiftMask,
-                *window,
-                0,
-                0,
-                GrabModeSync,
-                GrabModeSync,
-                *window,
-                0x0,
-            );
-        }
-
-        let (h, w) = (
-            self.get_current().expect("No current").screen.h,
-            self.get_current().expect("No current").screen.w,
+        self.get_mut_current().unwrap().create_window(
+            display_copy,
+            &root_copy,
+            &window_attributes,
+            &window,
         );
 
-        self.get_mut_current()
-            .expect("No current")
-            .clients
-            .push(Client::new(
-                String::from("0"),
-                frame,
-                *window,
-                &window_attributes,
-                &Quad::from_size(h, w),
-                WindowFlags::NONE,
-            ));
+        unsafe {
+            XAddToSaveSet(self.display, *window); /* offset */
+        }
 
         self.get_current()
             .expect("No current")
@@ -514,6 +513,7 @@ impl Rdwm {
             self.get_current().expect("No current").clients[0]
         );
     }
+
     fn on_configure_request(&self, event: &XConfigureRequestEvent) {
         info!("OnConfigureRequest event: {:#?}", *event);
         let mut config = XWindowChanges {
