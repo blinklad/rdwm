@@ -81,15 +81,15 @@ impl Workspace {
         attrs: &XWindowAttributes,
         window: &XWindow,
     ) {
-        unsafe {
-            let border_width: c_uint = 3;
-            let border_color: c_ulong = 0x316d4c;
-            let bg_color: c_ulong = 0x5f316d;
+        let border_width: c_uint = 3;
+        let border_color: c_ulong = 0x316d4c;
+        let bg_color: c_ulong = 0x5f316d;
 
+        unsafe {
             let frame = XCreateSimpleWindow(
                 display,
                 *root,
-                0, /* x */
+                0, //(self.clients.len() * (self.screen.w as usize / 2 * self.clients.len())) as i32
                 0,
                 (self.screen.w / 2) as c_uint,
                 (self.screen.h) as c_uint,
@@ -98,7 +98,6 @@ impl Workspace {
                 bg_color,
             );
 
-            XResizeWindow(display, *window, self.screen.w / 2, self.screen.h);
             XSelectInput(
                 display,
                 frame,
@@ -137,10 +136,14 @@ impl Workspace {
         for (num, client) in self.clients.iter().enumerate() {
             trace!("{{ Num: {:#?} Client: {:#?} }}", num, *client);
             unsafe {
+                trace!(
+                    "Offset: {:#?}",
+                    ((num) * (*client).frame.attrs.window.w as usize / self.clients.len()) as i32
+                );
                 XMoveResizeWindow(
                     display,
                     client.frame.id,
-                    ((num) * (*client).frame.attrs.window.w as usize / 2) as i32,
+                    ((num) * (*client).frame.attrs.window.w as usize / self.clients.len()) as i32,
                     0,
                     self.screen.w / (self.clients.len() as u32),
                     self.screen.h,
@@ -149,11 +152,13 @@ impl Workspace {
                 XMoveResizeWindow(
                     display,
                     client.context.id,
-                    ((num) * (*client).context.attrs.window.w as usize / 2) as i32,
+                    0,
                     0,
                     self.screen.w / (self.clients.len() as u32),
                     self.screen.h,
                 );
+                XMapWindow(display, client.frame.id);
+                XMapWindow(display, client.context.id);
             }
         }
     }
