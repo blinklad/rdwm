@@ -47,6 +47,7 @@ impl Rdwm {
 
 #[derive(Debug)]
 struct Workspace {
+    /* TODO Workspace buckets, hashable clients */
     number: usize,
     clients: Vec<Client>,
     selected: usize,
@@ -71,6 +72,19 @@ impl Workspace {
     #[allow(dead_code)]
     fn get_mut_selected(&mut self) -> Option<&mut Client> {
         self.clients.get_mut(self.selected)
+    }
+
+    fn update_selected(&mut self, display: *mut Display, index: usize) {
+        let yellow = 0xEEE8AA;
+
+        self.selected = index;
+
+        unsafe {
+            trace!(
+                "Set border result: {:#?}",
+                XSetWindowBorder(display, self.clients[self.selected].frame.id, yellow)
+            );
+        }
     }
 
     #[allow(dead_code)]
@@ -101,7 +115,11 @@ impl Workspace {
             XSelectInput(
                 display,
                 frame,
-                SubstructureRedirectMask | SubstructureNotifyMask,
+                SubstructureRedirectMask
+                    | SubstructureNotifyMask
+                    | FocusChangeMask
+                    | EnterWindowMask
+                    | LeaveWindowMask,
             );
 
             XReparentWindow(display, *window, frame, 0, 0);
@@ -164,7 +182,7 @@ impl Workspace {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Client {
     name: String,
     frame: Window,
@@ -311,7 +329,7 @@ impl Rdwm {
             XSelectInput(
                 self.display,
                 self.root,
-                SubstructureRedirectMask | SubstructureNotifyMask,
+                SubstructureRedirectMask | SubstructureNotifyMask | FocusChangeMask,
             );
 
             XSync(self.display, false as c_int);
@@ -373,10 +391,10 @@ impl Rdwm {
                 ButtonPress => self.on_button_press(&event.button),
                 //  ButtonRelease =>
                 //  MotionNotify =>
-                //  EnterNotify =>
-                //  LeaveNotify =>
-                //  FocusIn =>
-                //  FocusOut =>
+                EnterNotify => self.on_enter_notify(&event.crossing),
+                LeaveNotify => self.on_leave(&event.crossing),
+                FocusIn => self.on_focus_in(&event.focus_change),
+                FocusOut => self.on_focus_in(&event.focus_change),
                 //  KeymapNotify =>
                 //  Expose =>
                 //  GraphicsExpose =>
@@ -426,6 +444,36 @@ impl Rdwm {
 
     fn on_configure_notify(&self, event: &XConfigureEvent) {
         trace!("OnConfigureNotify event: {:#?}", *event);
+    }
+
+    fn on_enter_notify(&self, event: &XCrossingEvent) {
+        trace!("OnEnterNotify event: {:#?}", *event);
+    }
+
+    fn on_leave(&self, event: &XCrossingEvent) {
+        trace!("OnLeaveNotify event: {:#?}", *event);
+    }
+
+    fn on_focus_in(&mut self, event: &XFocusChangeEvent) {
+        trace!("OnFocusIn event: {:#?}", *event);
+
+        /* Cloning for now even though its safe to borrow */
+        let display_copy = self.display.clone();
+
+        let (num, client) = self
+            .get_current()
+            .expect("No current")
+            .clients
+            .iter()
+            .enumerate()
+            .find(|(_, c)| c.frame.id == event.window)
+            .expect("No such window");
+
+        trace!("Client: {:#?} Number: {:#?}", client, num);
+
+        self.get_mut_current()
+            .expect("No current")
+            .update_selected(display_copy, num);
     }
 
     fn on_unmap_notify(&mut self, event: &XUnmapEvent) {
