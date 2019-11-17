@@ -16,10 +16,11 @@ lazy_static! {
     static ref WM_DETECTED: Mutex<bool> = Mutex::new(false);
 }
 
+// Internal helper bitflags
 bitflags! {
     struct WindowFlags: u32 {
         const NONE        = 0b00000000;
-        const FIXED       = 0b00000001;
+        const FIXED       = 0b00000001; // Hacky way to manipulate bars with Override Redirect set
         const FLOATING    = 0b00000010;
         const URGENT      = 0b00000100;
         const FULLSCREEN  = 0b00001000;
@@ -76,10 +77,15 @@ impl Workspace {
 
     fn update_selected(&mut self, display: *mut Display, index: usize) {
         let yellow = 0xEEE8AA;
-
-        self.selected = index;
+        let blue = 0x5f316d;
 
         unsafe {
+            trace!(
+                "Change old border: {:#?}",
+                XSetWindowBorder(display, self.clients[self.selected].frame.id, blue)
+            );
+
+            self.selected = index;
             trace!(
                 "Set border result: {:#?}",
                 XSetWindowBorder(display, self.clients[self.selected].frame.id, yellow)
@@ -446,20 +452,13 @@ impl Rdwm {
         trace!("OnConfigureNotify event: {:#?}", *event);
     }
 
-    fn on_enter_notify(&self, event: &XCrossingEvent) {
+    fn on_enter_notify(&mut self, event: &XCrossingEvent) {
         trace!("OnEnterNotify event: {:#?}", *event);
-    }
-
-    fn on_leave(&self, event: &XCrossingEvent) {
-        trace!("OnLeaveNotify event: {:#?}", *event);
-    }
-
-    fn on_focus_in(&mut self, event: &XFocusChangeEvent) {
-        trace!("OnFocusIn event: {:#?}", *event);
 
         /* Cloning for now even though its safe to borrow */
         let display_copy = self.display.clone();
 
+        /* Very pythonic but should live elsewhere to prevent duplication */
         let (num, client) = self
             .get_current()
             .expect("No current")
@@ -474,6 +473,14 @@ impl Rdwm {
         self.get_mut_current()
             .expect("No current")
             .update_selected(display_copy, num);
+    }
+
+    fn on_leave(&self, event: &XCrossingEvent) {
+        trace!("OnLeaveNotify event: {:#?}", *event);
+    }
+
+    fn on_focus_in(&mut self, event: &XFocusChangeEvent) {
+        trace!("OnFocusIn event: {:#?}", *event);
     }
 
     fn on_unmap_notify(&mut self, event: &XUnmapEvent) {
