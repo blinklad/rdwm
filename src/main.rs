@@ -19,12 +19,12 @@ lazy_static! {
 // Internal helper bitflags
 bitflags! {
     struct WindowFlags: u32 {
-        const NONE        = 0b00000000;
-        const FIXED       = 0b00000001; // Hacky way to manipulate bars with Override Redirect set
-        const FLOATING    = 0b00000010;
-        const URGENT      = 0b00000100;
-        const FULLSCREEN  = 0b00001000;
-        const NEVER_FOCUS = 0b00010000;
+        const NONE        = 1 << 0;
+        const FIXED       = 1 << 1; // Hacky way to manipulate bars with Override Redirect set
+        const FLOATING    = 1 << 2;
+        const URGENT      = 1 << 3;
+        const FULLSCREEN  = 1 << 4;
+        const NEVER_FOCUS = 1 << 5;
     }
 }
 
