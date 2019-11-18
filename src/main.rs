@@ -221,20 +221,22 @@ impl Rdwm {
         let display_copy = self.display.clone();
 
         /* Very pythonic but should live elsewhere to prevent duplication */
-        let (num, client) = self
+        if let Some((num, client)) = self
             .get_current()
             .expect("No current")
             .clients
             .iter()
             .enumerate()
             .find(|(_, c)| c.frame.id == event.window)
-            .expect("No such window");
+        {
+            trace!("Client: {:#?} Number: {:#?}", client, num);
 
-        trace!("Client: {:#?} Number: {:#?}", client, num);
-
-        self.get_mut_current()
-            .expect("No current")
-            .update_selected(display_copy, num);
+            self.get_mut_current()
+                .expect("No current")
+                .update_selected(display_copy, num);
+        } else {
+            return;
+        }
     }
 
     fn on_leave(&self, event: &XCrossingEvent) {
@@ -253,32 +255,42 @@ impl Rdwm {
             return;
         }
 
-        if let Some(client) = self
+        let (num, _) = self
             .get_current()
             .expect("No workspaces")
             .clients
             .iter()
-            .find(|c| (*c).context.id == (*event).window)
+            .enumerate()
+            .find(|(_, c)| (*c).context.id == (*event).window)
+            .expect("No such item");
         {
-            unsafe {
-                XUnmapWindow(self.display, client.context.id);
-                XReparentWindow(self.display, (*event).window, self.root, 0, 0);
-                XRemoveFromSaveSet(self.display, (*event).window);
-                XDestroyWindow(self.display, client.context.id);
-                info!("Unframed client window: {:#?}", client);
-            }
-        } else {
-            info!(
-                "Ignoring UnmapNotify for non-client window: {:#?}",
-                event.window
-            );
-            return;
+            let display = self.display.clone();
+            let root = self.root.clone();
+
+            self.get_mut_current()
+                .expect("No such workspace")
+                .destroy_window(display, root, num);
+
+            //XUnmapWindow(self.display, client.context.id);
+            //XReparentWindow(self.display, (*event).window, self.root, 0, 0);
+            //XRemoveFromSaveSet(self.display, (*event).window);
+            //XDestroyWindow(self.display, client.context.id);
+
+            //info!("Unframed client window: {:#?}", client);
         }
 
-        self.get_mut_current()
-            .unwrap()
-            .clients
-            .remove((*event).window as usize);
+        // TODO
+        //info!(
+        //    "Ignoring UnmapNotify for non-client window: {:#?}",
+        //    event.window
+        //);
+        //return;
+
+        // TODO Impl drop for Client
+        //self.get_mut_current()
+        //    .unwrap()
+        //    .clients
+        //    .remove((*event).window as usize);
     }
 
     fn on_button_press(&self, event: &XButtonEvent) {
@@ -390,19 +402,19 @@ impl Rdwm {
         _display: *mut Display,
         event: *mut XErrorEvent,
     ) -> c_int {
-        assert_eq!(
-            /* Currently panics with SIGILL, until more errors are handled */
-            (*event).error_code,
-            BadAccess,
-            "Expected BadAccess error code OnWMDetected;
-            Error handler not implemented for code: {:#?}",
-            Rdwm::err_code_pretty((*event).error_code)
-        );
+        //assert_eq!(
+        //    /* Currently panics with SIGILL, until more errors are handled */
+        //    (*event).error_code,
+        //    BadAccess,
+        //    "Expected BadAccess error code OnWMDetected;
+        //    Error handler not implemented for code: {:#?}",
+        //    Rdwm::err_code_pretty((*event).error_code)
+        //);
 
         error!("Another window manager detected");
 
-        let mut detected = WM_DETECTED.lock().unwrap();
-        *detected = true;
+        //let mut detected = WM_DETECTED.lock().unwrap();
+        //*detected = true;
         0 /* This is ignored */
     }
 
@@ -476,11 +488,14 @@ impl Workspace {
         let yellow = 0xEEE8AA;
         let blue = 0x5f316d;
 
+        // TODO
         unsafe {
-            trace!(
-                "Change old border: {:#?}",
-                XSetWindowBorder(display, self.clients[self.selected].frame.id, blue)
-            );
+            if self.clients.len() > index {
+                trace!(
+                    "Change old border: {:#?}",
+                    XSetWindowBorder(display, self.clients[self.selected].frame.id, blue)
+                );
+            }
 
             self.selected = index;
             trace!(
@@ -550,6 +565,23 @@ impl Workspace {
                 WindowFlags::NONE,
             ));
         }
+    }
+
+    fn destroy_window(&mut self, display: *mut Display, root: XWindow, index: usize) {
+        let client = &mut self.clients[index];
+
+        // TODO
+        unsafe {
+            //XUnmapWindow(display, client.context.id);
+            //XUnmapWindow(display, client.frame.id);
+            //XReparentWindow(display, client.context.id, root, 0, 0);
+            XDestroyWindow(display, client.context.id);
+            XDestroyWindow(display, client.frame.id);
+        };
+
+        //self.update_selected(display, self.clients.len() - 1);
+        self.clients.remove(index);
+        self.arrange(display);
     }
 
     /* TODO Move simple tiling logic here */
