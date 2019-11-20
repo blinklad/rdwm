@@ -490,14 +490,20 @@ impl Workspace {
 
         // TODO
         unsafe {
-            if self.clients.len() > index {
-                trace!(
-                    "Change old border: {:#?}",
-                    XSetWindowBorder(display, self.clients[self.selected].frame.id, blue)
-                );
-            }
+            /* If the index is greater, then it's an unmapped window we don't care about*/
+            self.selected = {
+                if self.clients.len() > self.selected {
+                    trace!(
+                        "Change old border: {:#?}",
+                        XSetWindowBorder(display, self.clients[self.selected].frame.id, blue)
+                    );
+                    index
+                } else {
+                    /* "Sensible" default of MRU window */
+                    self.clients.len() - 1
+                }
+            };
 
-            self.selected = index;
             trace!(
                 "Set border result: {:#?}",
                 XSetWindowBorder(display, self.clients[self.selected].frame.id, yellow)
