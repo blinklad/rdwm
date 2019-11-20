@@ -1,4 +1,3 @@
-use env_logger::WriteStyle::Auto;
 use libc::*;
 use std::sync::Mutex;
 use x11::xlib::*;
@@ -12,12 +11,13 @@ lazy_static! {
 // Internal helper bitflags
 bitflags! {
     struct WindowFlags: u32 {
-        const NONE        = 1 << 0;
-        const FIXED       = 1 << 1; // Hacky way to manipulate bars with Override Redirect set
-        const FLOATING    = 1 << 2;
-        const URGENT      = 1 << 3;
-        const FULLSCREEN  = 1 << 4;
-        const NEVER_FOCUS = 1 << 5;
+        const NONE         = 1 << 0;
+        const TILING       = 1 << 1;
+        const FLOATING     = 1 << 2;
+        const URGENT       = 1 << 3;
+        const FULLSCREEN   = 1 << 4;
+        const NEVER_FOCUS  = 1 << 5;
+        const FIXED        = 1 << 6; // Hacky way to manipulate bars with override redirect set
     }
 }
 
@@ -46,7 +46,7 @@ impl Rdwm {
         }
 
         /* TODO Screen indices _may_ work differently outside Xephyr */
-        let root = unsafe { XDefaultRootWindow(display) };
+        let root = Rdwm::from_config(display);
         let mut workspaces = Vec::new();
         let cur_workspace = unsafe {
             Workspace::init(
@@ -70,6 +70,10 @@ impl Rdwm {
         })
     }
 
+    #[allow(dead_code)]
+    fn from_config(display: *mut Display) -> XWindow {
+        unsafe { XDefaultRootWindow(display) }
+    }
     fn get_current(&self) -> Option<&Workspace> {
         self.workspaces.get(self.current)
     }
@@ -147,42 +151,43 @@ impl Rdwm {
             #[allow(non_upper_case_globals)]
             unsafe {
                 /* Safe because we know that the type of event dictates well-defined union member access */
-                match event.get_type() { /* TODO */
-                //  KeyPress =>
-                //  KeyRelease =>
-                ButtonPress => self.on_button_press(&event.button),
-                //  ButtonRelease =>
-                //  MotionNotify =>
-                EnterNotify => self.on_enter_notify(&event.crossing),
-                LeaveNotify => self.on_leave(&event.crossing),
-                FocusIn => self.on_focus_in(&event.focus_change),
-                FocusOut => self.on_focus_in(&event.focus_change),
-                //  KeymapNotify =>
-                //  Expose =>
-                //  GraphicsExpose =>
-                //  NoExpose =>
-                //  VisibilityNotify =>
-                CreateNotify => self.on_create_notify(&event),
-                DestroyNotify => self.on_destroy_notify(&event.destroy_window),
-                UnmapNotify => self.on_unmap_notify(&event.unmap),
-                MapNotify => self.on_map_notify(&event.map),
-                MapRequest => self.on_map_request(&event.map_request),
-                ReparentNotify => self.on_reparent_notify(&event.reparent),
-                ConfigureNotify => self.on_configure_notify(&event.configure),
-                ConfigureRequest => self.on_configure_request(&event.configure_request),
-                //  GravityNotify =>
-                //  ResizeRequest =>
-                //  CirculateNotify =>
-                //  CirculateRequest =>
-                //  PropertyNotify =>
-                //  SelectionClear =>
-                //  SelectionRequest =>
-                //  SelectionNotify =>
-                //  ColormapNotify =>
-                //  ClientMessage =>
-                //  MappingNotify =>
-                //  GenericEvent =>
-                _ => unimplemented!(),
+                match event.get_type() {
+                    /* TODO */
+                    KeyPress => self.on_key_press(&event.key),
+                    //  KeyRelease =>
+                    ButtonPress => self.on_button_press(&event.button),
+                    //  ButtonRelease =>
+                    //  MotionNotify =>
+                    EnterNotify => self.on_enter_notify(&event.crossing),
+                    LeaveNotify => self.on_leave(&event.crossing),
+                    FocusIn => self.on_focus_in(&event.focus_change),
+                    FocusOut => self.on_focus_in(&event.focus_change),
+                    //  KeymapNotify =>
+                    //  Expose =>
+                    //  GraphicsExpose =>
+                    //  NoExpose =>
+                    //  VisibilityNotify =>
+                    CreateNotify => self.on_create_notify(&event),
+                    DestroyNotify => self.on_destroy_notify(&event.destroy_window),
+                    UnmapNotify => self.on_unmap_notify(&event.unmap),
+                    MapNotify => self.on_map_notify(&event.map),
+                    MapRequest => self.on_map_request(&event.map_request),
+                    ReparentNotify => self.on_reparent_notify(&event.reparent),
+                    ConfigureNotify => self.on_configure_notify(&event.configure),
+                    ConfigureRequest => self.on_configure_request(&event.configure_request),
+                    //  GravityNotify =>
+                    //  ResizeRequest =>
+                    //  CirculateNotify =>
+                    //  CirculateRequest =>
+                    //  PropertyNotify =>
+                    //  SelectionClear =>
+                    //  SelectionRequest =>
+                    //  SelectionNotify =>
+                    //  ColormapNotify =>
+                    //  ClientMessage =>
+                    //  MappingNotify =>
+                    //  GenericEvent =>
+                    _ => unimplemented!(),
                 }
             }
         }
@@ -207,6 +212,8 @@ impl Rdwm {
     fn on_configure_notify(&self, event: &XConfigureEvent) {
         trace!("OnConfigureNotify event: {:#?}", *event);
     }
+
+    fn on_key_press(&self, event: &XKeyEvent) {}
 
     fn on_enter_notify(&mut self, event: &XCrossingEvent) {
         trace!("OnEnterNotify event: {:#?}", *event);
@@ -264,27 +271,7 @@ impl Rdwm {
             self.get_mut_current()
                 .expect("No such workspace")
                 .destroy_window(display, root, num);
-
-            //XUnmapWindow(self.display, client.context.id);
-            //XReparentWindow(self.display, (*event).window, self.root, 0, 0);
-            //XRemoveFromSaveSet(self.display, (*event).window);
-            //XDestroyWindow(self.display, client.context.id);
-
-            //info!("Unframed client window: {:#?}", client);
         }
-
-        // TODO
-        //info!(
-        //    "Ignoring UnmapNotify for non-client window: {:#?}",
-        //    event.window
-        //);
-        //return;
-
-        // TODO Impl drop for Client
-        //self.get_mut_current()
-        //    .unwrap()
-        //    .clients
-        //    .remove((*event).window as usize);
     }
 
     fn on_button_press(&self, event: &XButtonEvent) {
@@ -453,10 +440,11 @@ impl Drop for Rdwm {
 
 #[derive(Debug)]
 struct Workspace {
-    /* TODO Workspace buckets, hashable clients */
+    /* TODO BTreeSet may provide better abstractions then a Vec */
     number: usize,
     clients: Vec<Client>,
     selected: usize,
+    floating: usize,
     screen: Quad,
 }
 
@@ -466,6 +454,7 @@ impl Workspace {
             number,
             clients: Vec::new(),
             selected: 0,
+            floating: 0,
             screen,
         }
     }
@@ -574,14 +563,13 @@ impl Workspace {
 
         // TODO
         unsafe {
-            //XUnmapWindow(display, client.context.id);
-            //XUnmapWindow(display, client.frame.id);
-            //XReparentWindow(display, client.context.id, root, 0, 0);
+            XUnmapWindow(display, client.context.id);
+            XUnmapWindow(display, client.frame.id);
+            XReparentWindow(display, client.context.id, root, 0, 0);
             XDestroyWindow(display, client.context.id);
             XDestroyWindow(display, client.frame.id);
         };
 
-        //self.update_selected(display, self.clients.len() - 1);
         self.clients.remove(index);
         self.arrange(display);
     }
@@ -628,6 +616,36 @@ struct Client {
 }
 
 impl Client {
+    #[allow(dead_code)]
+    fn tile(
+        name: String,
+        frame: XWindow,
+        context: XWindow,
+        hints: &XWindowAttributes,
+        attrs: &Quad,
+    ) -> Self {
+        Client {
+            name,
+            frame: Window::new(frame, attrs, hints),
+            context: Window::new(context, attrs, hints),
+            flags: WindowFlags::TILING,
+        }
+    }
+    #[allow(dead_code)]
+    fn floating(
+        name: String,
+        frame: XWindow,
+        context: XWindow,
+        hints: &XWindowAttributes,
+        attrs: &Quad,
+    ) -> Self {
+        Client {
+            name,
+            frame: Window::new(frame, attrs, hints),
+            context: Window::new(context, attrs, hints),
+            flags: WindowFlags::FLOATING,
+        }
+    }
     fn new(
         name: String,
         frame: XWindow,
