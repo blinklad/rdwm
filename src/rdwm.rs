@@ -4,12 +4,15 @@ use x11::xlib::*;
 type XWindow = x11::xlib::Window;
 
 lazy_static! {
-    /* TODO This could be a RefCell or any single-threaded sync primitive */
+    /// Lazily evaluated Mutex used to guard global error state required by Xlib error handler registration.
+    /// It's not an ideal way to handle global state (even if it was changed to a more performant RefCell
+    /// but will do for the time being.
     static ref WM_DETECTED: Mutex<bool> = Mutex::new(false);
 }
 
-// Internal helper bitflags
 bitflags! {
+    /// 'Internal' bitflags (ie. not known to X) used to manage opt-in and default Client application logic.
+    /// For example, the current state of a window to colour borders correctly, override tiling rules, etc.
     struct WindowFlags: u32 {
         const NONE         = 1 << 0;
         const TILING       = 1 << 1;
@@ -22,6 +25,9 @@ bitflags! {
 }
 
 #[derive(Debug)]
+/// Window manager that intercepts XEvents in the main event loop, propagating them to appropriate agents.
+/// Maintains an XWindow handle registered for Substructure Redirection, as well as a collection of Workspaces
+/// which hold client windows.
 pub struct Rdwm {
     display: *mut Display,
     root: XWindow,
