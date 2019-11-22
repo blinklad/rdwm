@@ -13,16 +13,17 @@ The provided [build script](run.sh) should work, as long as you have:
 
 ## Timeline
 
-| Feature / Goal                                                                      | State              | Notes                                                                                                   |
-| -------                                                                             | -----              | -----                                                                                                   |
-| Basic tiling                                                                        | Adding grid logic  |                                                                                                         |
-| Unit tests & mocking                                                                | N/A                | Static assertions are used heavily for FFI safety                                                       |
-| Workspaces                                                                          | Currently singular |                                                                                                         |
-| Fullscreen selection                                                                | N/A                |                                                                                                         |
-| Floating mode                                                                       | N/A                |                                                                                                         |
-| Gaps                                                                                | N/A                |                                                                                                         |
-| XCB                                                                                 | N/A                | Currently using XLIB; Core abstractions are designed such that they are agnostic of underlying bindings |
-| 'Swallows' DWM-like feature                                                         | N/A                |                                                                                                         |
-| Sane fonts                                                                          | N/A                |                                                                                                         |
-| Stateful (de-)serialization of children tree for opinionated yet _easy_ restoration | N/A                | i3-gaps exposes granular configuration; rdwm will make decisions for users as to abstract complexity    |
-| User configuration for border rules                                                 | N/A                |                                                                                                         |
+| Feature / Goal                                                                      | State              | Notes                                                                                                    |
+| -------                                                                             | -----              | -----                                                                                                    |
+| Basic tiling                                                                        | Adding grid logic  |                                                                                                          |
+| Unit tests & mocking                                                                | N/A                | Static assertions are used heavily for FFI safety                                                        |
+| Workspaces                                                                          | Currently singular |                                                                                                          |
+| Fullscreen selection                                                                | N/A                |                                                                                                          |
+| Floating mode                                                                       | N/A                |                                                                                                          |
+| Gaps                                                                                | N/A                |                                                                                                          |
+| XCB                                                                                 | N/A                | Currently using XLib; Core abstractions are designed such that they are agnostic of underlying bindings |
+| 'Swallows' DWM-like feature                                                         | N/A                |                                                                                                          |
+| Sane fonts                                                                          | N/A                |                                                                                                          |
+| Respect graphics toolkit clients (GTK, QT)                                          | N/A                |                                                                                                          |
+| Stateful (de-)serialization of children tree for opinionated yet _easy_ restoration | N/A                | i3-gaps exposes granular configuration; rdwm will make decisions for users as to abstract complexity     |
+| User configuration for border rules                                                 | N/A                |                                                                                                          |
