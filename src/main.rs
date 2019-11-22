@@ -9,6 +9,7 @@ mod rdwm;
 use env_logger::WriteStyle::Auto;
 use rdwm::Rdwm;
 
+/// Starts logging for Rdwm and initialises the main event loop.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::builder()
         .format_timestamp(None)

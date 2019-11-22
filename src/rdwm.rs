@@ -1,7 +1,7 @@
 use libc::*;
 use std::sync::Mutex;
 use x11::xlib::*;
-type XWindow = x11::xlib::Window;
+type XWindow = x11::xlib::Window; // TODO NewType pattern to prevent i32 aliasing issues
 
 lazy_static! {
     /// Lazily evaluated Mutex used to guard global error state required by Xlib error handler registration.
@@ -36,6 +36,9 @@ pub struct Rdwm {
 }
 
 impl Rdwm {
+    /// Instantiates a substructure redirected X client, with a single empty workspace.
+    /// Refutable as there may already be an X client registered for substructure redirection (ie.
+    /// another window manager).
     pub fn init() -> Option<Self> {
         let display = unsafe {
             /* Safe because no side effects at this point */
@@ -77,18 +80,28 @@ impl Rdwm {
     }
 
     #[allow(dead_code)]
+    /// Returns a handle to an X display acting as the root window, registered for any configuration
+    /// required by Rdwm consumers.
     fn from_config(display: *mut Display) -> XWindow {
         unsafe { XDefaultRootWindow(display) }
     }
+
+    /// Returns a shared reference to the current workspace. In situations of contention, eg. multiple
+    /// monitors, the current workspace is a workspace such that the currently focused client window
+    /// exists in said workspace.
     fn get_current(&self) -> Option<&Workspace> {
         self.workspaces.get(self.current)
     }
 
+    /// Returns an exclusive reference to the current workspace. In situations of contention, eg. multiple
+    /// monitors, the current workspace is a workspace such that the currently focused client window
+    /// exists in said workspace.
     fn get_mut_current(&mut self) -> Option<&mut Workspace> {
         self.workspaces.get_mut(self.current)
     }
 
-    /* Main event loop */
+    /// Begins the main event loop.
+    /// Registers for error handling, input selection and synchronizes with the X server.
     pub fn run(&mut self) {
         unsafe {
             /* Sound, as panics on errors that aren't handled properly yet */
@@ -102,9 +115,7 @@ impl Rdwm {
             );
 
             XSync(self.display, false as c_int);
-        }
 
-        unsafe {
             /* MaybeUninit is safe because XQueryTree will always write _something_ */
             XGrabServer(self.display);
             let mut existing_root = std::mem::MaybeUninit::<XWindow>::zeroed().assume_init();
@@ -141,21 +152,17 @@ impl Rdwm {
             }
             XFree(existing_windows as *mut _ as *mut c_void);
             XUngrabServer(self.display);
-        }
 
-        loop {
-            if *WM_DETECTED.lock().unwrap() == true {
-                return;
-            }
+            loop {
+                if *WM_DETECTED.lock().unwrap() == true {
+                    return;
+                }
 
-            let mut event: XEvent =
-                unsafe { std::mem::MaybeUninit::<XEvent>::zeroed().assume_init() };
-            unsafe {
+                let mut event: XEvent = { std::mem::MaybeUninit::<XEvent>::zeroed().assume_init() };
+
                 XNextEvent(self.display, &mut event);
-            }
 
-            #[allow(non_upper_case_globals)]
-            unsafe {
+                #[allow(non_upper_case_globals)]
                 /* Safe because we know that the type of event dictates well-defined union member access */
                 match event.get_type() {
                     /* TODO */
@@ -219,7 +226,9 @@ impl Rdwm {
         trace!("OnConfigureNotify event: {:#?}", *event);
     }
 
-    fn on_key_press(&self, event: &XKeyEvent) {}
+    fn on_key_press(&self, event: &XKeyEvent) {
+        trace!("OnKeyPress event: {:#?}", *event);
+    }
 
     fn on_enter_notify(&mut self, event: &XCrossingEvent) {
         trace!("OnEnterNotify event: {:#?}", *event);
@@ -289,6 +298,8 @@ impl Rdwm {
         info!("OnMapRequest event: {:#?}", *event);
     }
 
+    /// Given a client window, create and reparent the client within a top-level frame, setting
+    /// appropriate client window hints in the process.
     fn frame(&mut self, window: &XWindow, already_existing: bool) {
         let window_attributes = unsafe {
             /* Safe as XGetWindowAttributes will write _something_ to result, and panic on bad request */
@@ -322,7 +333,7 @@ impl Rdwm {
         );
 
         unsafe {
-            XAddToSaveSet(self.display, *window); /* offset */
+            XAddToSaveSet(self.display, *window);
         }
 
         self.get_current()
@@ -335,6 +346,7 @@ impl Rdwm {
         );
     }
 
+    /// Configure a client window based on given hints.
     fn on_configure_request(&self, event: &XConfigureRequestEvent) {
         info!("OnConfigureRequest event: {:#?}", *event);
         let mut config = XWindowChanges {
@@ -384,9 +396,9 @@ impl Rdwm {
         );
     }
 
-    /* Static method, as Xlib needs to know the handlers address.
-     * TODO Needs to handle more exotic (read: more than just Window Manager detected) errors.
-     */
+    /// Static method to interface with X's error handling routines.
+    /// Currently only handles BadAccess errors raised when, on running Rdwm, another X client exists
+    /// that has registered for substructure redirection (ie. another window manager).
     pub unsafe extern "C" fn on_wm_detected(
         _display: *mut Display,
         event: *mut XErrorEvent,
@@ -435,6 +447,8 @@ impl Rdwm {
 }
 
 impl Drop for Rdwm {
+    /// Ensure that when event loop is exited through well-defined behaviour (eg. stack unwinding,
+    /// normal exit or X server requests) that the display handle is closed.
     fn drop(&mut self) {
         unsafe {
             /* Safe because only 1 WM per x server */
@@ -445,6 +459,11 @@ impl Drop for Rdwm {
 }
 
 #[derive(Debug)]
+/// Workspaces form the core abstraction over a group of client windows whose arrangements affect
+/// that of their peers (unless they are floating or fixed).
+/// Individual workspaces manage their own clients, including book-keeping the currently selected
+/// client, floating and fixed clients and details specific to the (logical) screen that they reside
+/// on. Not quite analogous to dwm's Monitor but holds some similarities.
 struct Workspace {
     /* TODO BTreeSet may provide better abstractions then a Vec */
     number: usize,
@@ -455,6 +474,7 @@ struct Workspace {
 }
 
 impl Workspace {
+    /// Create an empty workspace of a given size.
     fn init(number: usize, screen: Quad) -> Self {
         Workspace {
             number,
@@ -466,20 +486,23 @@ impl Workspace {
     }
 
     #[allow(dead_code)]
+    /// Returns a shared reference to the currently selected client.
     fn get_selected(&self) -> Option<&Client> {
         self.clients.get(self.selected)
     }
 
     #[allow(dead_code)]
+    /// Returns an exclusive reference to the currently selected client.
     fn get_mut_selected(&mut self) -> Option<&mut Client> {
         self.clients.get_mut(self.selected)
     }
 
+    /// Update the workspaces currently selected client, including re-decorating window frames.
     fn update_selected(&mut self, display: *mut Display, index: usize) {
+        // TODO Use the type system to enforce indices belonging to the Client collection.
         let yellow = 0xEEE8AA;
         let blue = 0x5f316d;
 
-        // TODO
         unsafe {
             /* If the index is greater, then it's an unmapped window we don't care about*/
             self.selected = {
@@ -503,6 +526,8 @@ impl Workspace {
     }
 
     #[allow(dead_code)]
+    /// Creates a window for an X client.
+    /// The window is registered for substructure redirection, focus change and enter / leave events,
     fn create_window(
         &mut self,
         display: *mut Display,
@@ -564,6 +589,8 @@ impl Workspace {
         }
     }
 
+    /// Destroys an X client window. The window (and its frame) are unmapped and destroyed by X.
+    /// Then, the workspace that the client belongs to is rearranged.
     fn destroy_window(&mut self, display: *mut Display, root: XWindow, index: usize) {
         let client = &mut self.clients[index];
 
@@ -577,10 +604,12 @@ impl Workspace {
         };
 
         self.clients.remove(index);
-        self.arrange(display);
+        self.arrange(display); // TODO What if a Client is destroyed on a different workspace than
+                               // the currently selected workspace?
     }
 
-    /* TODO Move simple tiling logic here */
+    /// Refresh client windows on a workspace to match some arrangement, eg. tiling over the screen
+    /// space.
     fn arrange(&self, display: *mut Display) {
         for (num, client) in self.clients.iter().enumerate() {
             trace!("{{ Num: {:#?} Client: {:#?} }}", num, *client);
@@ -614,6 +643,8 @@ impl Workspace {
 }
 
 #[derive(Debug, Clone)]
+/// Clients represent an XWindow frame + client pairing, with additional context and attributes for
+/// book-keeping, eg. window size hints, fixed, floating etc.
 struct Client {
     name: String,
     frame: Window,
@@ -622,7 +653,9 @@ struct Client {
 }
 
 impl Client {
+    // TODO Perhaps Builder pattern would work well here.
     #[allow(dead_code)]
+    /// Create a window that shall be tiled.
     fn tile(
         name: String,
         frame: XWindow,
@@ -638,6 +671,7 @@ impl Client {
         }
     }
     #[allow(dead_code)]
+    /// Create a window that shall be floating.
     fn floating(
         name: String,
         frame: XWindow,
@@ -652,6 +686,7 @@ impl Client {
             flags: WindowFlags::FLOATING,
         }
     }
+    /// Create a window that shall have any flags passed in.
     fn new(
         name: String,
         frame: XWindow,
@@ -670,6 +705,10 @@ impl Client {
 }
 
 #[derive(Debug, Clone)]
+/// Rdwm Windows are a thin wrapper around XWindows (which are really just a number used for X's
+/// book-keeping). Rdwm windows contain client-supplied hints (eg. values for screen positioning
+/// that may be used when toggling between floating / tiling modes) and _actual_ values supplied to
+/// X when mapping and resizing Client windows based on a Workspace.
 struct Window {
     id: XWindow,
     hints: Attributes,
@@ -677,6 +716,7 @@ struct Window {
 }
 
 impl Window {
+    /// Create a new Window.
     fn new(id: XWindow, attrs: &Quad, hints: &XWindowAttributes) -> Self {
         Window {
             id,
@@ -687,6 +727,9 @@ impl Window {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Attributes are a very thin wrapper around a 4-tuple of co-ordinates and sizes used to plot
+/// Clients onto a logical screen. This struct will certainly be changed in the near future to
+/// be more extensible to user- and developer-supplied values.
 struct Attributes {
     window: Quad,
 }
@@ -711,6 +754,7 @@ impl Attributes {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// A 4-tuple of integers used to plot a point on a screen as a co-ordinate vector.
 struct Quad {
     x: u32,
     y: u32,
@@ -729,10 +773,12 @@ impl Quad {
         }
     }
 
+    #[allow(dead_code)]
     fn from_size(h: u32, w: u32) -> Self {
         Quad { x: 0, y: 0, w, h }
     }
 
+    #[allow(dead_code)]
     fn from_coords(x: u32, y: u32) -> Self {
         Quad { x, y, h: 0, w: 0 }
     }

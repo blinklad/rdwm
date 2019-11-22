@@ -1,3 +1,6 @@
+// TODO It could be pretty cute to use the include! macro + generated enumeration literals to specify
+// Application logic a la dwm. This could interface with the system in a loosely coupled way to allow
+// for a more robust approach in user-supplied configuration, eg. TOML, YAML, etc.
 use libc::*;
 use x11::xlib::*;
 
