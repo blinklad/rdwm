@@ -8,4 +8,21 @@ use x11::xlib::*;
 /// Holds runtime state of changes, if applicable.
 /// Operations and data are mostly opaque to Rdwm proper, which is mainly just to _respond_ to events
 /// by messaging appropriate handlers and handle any window-related book-keeping.
+type Colour = XColor;
+
 struct RdwmConfig {}
+
+struct WindowSettings {}
+
+struct ArrangementSettings {
+    InnerGapSize: usize,
+    OuterGapSize: usize,
+    SmartGapsOn: bool,
+}
+
+struct BorderSettings {
+    BorderColour: Colour,
+    BorderSize: usize,
+    FocusColour: Colour,
+    NoFocusColour: bool,
+}
