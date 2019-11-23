@@ -50,7 +50,7 @@ impl Rdwm {
         }
         let screen = unsafe { XScreenOfDisplay(display, 0) };
 
-        if screen as *mut _ == std::ptr::null_mut() {
+        if screen.is_null() {
             panic!("No screens associated with display");
         }
 
@@ -234,7 +234,7 @@ impl Rdwm {
         trace!("OnEnterNotify event: {:#?}", *event);
 
         /* Cloning for now even though its safe to borrow */
-        let display_copy = self.display.clone();
+        let display_copy = self.display;
 
         /* Very pythonic but should live elsewhere to prevent duplication */
         if let Some((num, client)) = self
@@ -280,8 +280,8 @@ impl Rdwm {
             .find(|(_, c)| (*c).context.id == (*event).window)
             .expect("No such item");
         {
-            let display = self.display.clone();
-            let root = self.root.clone();
+            let display = self.display;
+            let root = self.root;
 
             self.get_mut_current()
                 .expect("No such workspace")
@@ -322,8 +322,8 @@ impl Rdwm {
         };
 
         /* Cloning for now even though its safe to borrow */
-        let display_copy = self.display.clone();
-        let root_copy = self.root.clone();
+        let display_copy = self.display;
+        let root_copy = self.root;
 
         self.get_mut_current().unwrap().create_window(
             display_copy,
@@ -401,7 +401,7 @@ impl Rdwm {
     /// that has registered for substructure redirection (ie. another window manager).
     pub unsafe extern "C" fn on_wm_detected(
         _display: *mut Display,
-        event: *mut XErrorEvent,
+        _event: *mut XErrorEvent,
     ) -> c_int {
         //assert_eq!(
         //    /* Currently panics with SIGILL, until more errors are handled */
@@ -419,6 +419,7 @@ impl Rdwm {
         0 /* This is ignored */
     }
 
+    #[allow(dead_code)]
     fn err_code_pretty(code: c_uchar) -> &'static str {
         match code {
             0 => "Success",
@@ -747,9 +748,7 @@ impl Attributes {
     }
 
     fn tiling(attrs: &Quad) -> Self {
-        Attributes {
-            window: attrs.clone(),
-        }
+        Attributes { window: *attrs }
     }
 }
 
