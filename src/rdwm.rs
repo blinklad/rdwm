@@ -14,13 +14,13 @@ bitflags! {
     /// 'Internal' bitflags (ie. not known to X) used to manage opt-in and default Client application logic.
     /// For example, the current state of a window to colour borders correctly, override tiling rules, etc.
     struct WindowFlags: u32 {
-        const NONE         = 1 << 0;
-        const TILING       = 1 << 1;
-        const FLOATING     = 1 << 2;
-        const URGENT       = 1 << 3;
-        const FULLSCREEN   = 1 << 4;
-        const NEVER_FOCUS  = 1 << 5;
-        const FIXED        = 1 << 6; // Hacky way to manipulate bars with override redirect set
+        const NONE         = 0 << 0;
+        const TILING       = 1 << 0;
+        const FLOATING     = 1 << 1;
+        const URGENT       = 1 << 2;
+        const FULLSCREEN   = 1 << 3;
+        const NEVER_FOCUS  = 1 << 4;
+        const FIXED        = 1 << 5; // Hacky way to manipulate bars with override redirect set
     }
 }
 

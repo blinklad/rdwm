@@ -5,6 +5,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate bitflags;
 
+mod config;
 mod rdwm;
 use env_logger::WriteStyle::Auto;
 use rdwm::Rdwm;
@@ -16,6 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .write_style(Auto)
         .init();
     info!("Starting logger OK");
+    config::get_config();
+
     let mut rdwm = Rdwm::init()
         .ok_or("could not connect to display server")
         .unwrap();
