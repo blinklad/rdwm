@@ -7,6 +7,7 @@ extern crate bitflags;
 
 mod config;
 mod rdwm;
+
 use env_logger::WriteStyle::Auto;
 use rdwm::Rdwm;
 
