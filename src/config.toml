@@ -1,0 +1,32 @@
+[windows]
+inner_gap = 4
+outer_gap = 4
+smart_gaps = false
+
+[borders]
+colour = "periwinkle_blue"
+size = 0
+focus_colour = "burnt_umber"
+
+[[binding]]
+name = "opens alacritty on alt+enter"
+keys = [ "alt", "enter"]
+operation = "term"
+
+[[binding]]
+name = "kills focused window on alt+shift+q"
+keys = [ "alt", "shift", "q" ]
+operation = "kill focus"
+
+[[binding]]
+name = "takes screenshot with current date"
+keys = [ "alt", "shift", "s" ]
+operation = "screenshot"
+
+[commands]
+term = "exec alacritty"
+screenshot = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
+
+[colours]
+periwinkle_blue = 0xCCCCFF
+burnt_umber = 0x8a3324 
