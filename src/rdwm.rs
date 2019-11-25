@@ -83,7 +83,11 @@ impl Rdwm {
     /// Returns a handle to an X display acting as the root window, registered for any configuration
     /// required by Rdwm consumers.
     fn from_config(display: *mut Display) -> XWindow {
-        unsafe { XDefaultRootWindow(display) }
+        unsafe {
+            let root = XDefaultRootWindow(display);
+            XSelectInput(display, root, KeyPressMask); // TODO
+            root
+        }
     }
 
     /// Returns a shared reference to the current workspace. In situations of contention, eg. multiple
@@ -145,11 +149,13 @@ impl Rdwm {
             );
 
             assert_eq!(existing_root, self.root);
-            let existing = std::slice::from_raw_parts(existing_windows, num_existing as usize);
 
+            // Frame existing windows from the saved set
+            let existing = std::slice::from_raw_parts(existing_windows, num_existing as usize);
             for w in existing.iter() {
                 self.frame(w, true);
             }
+
             XFree(existing_windows as *mut _ as *mut c_void);
             XUngrabServer(self.display);
 
@@ -301,10 +307,11 @@ impl Rdwm {
     /// Given a client window, create and reparent the client within a top-level frame, setting
     /// appropriate client window hints in the process.
     fn frame(&mut self, window: &XWindow, already_existing: bool) {
+        /* Safe as XGetWindowAttributes will write _something_ to result, and panic on bad request */
         let window_attributes = unsafe {
-            /* Safe as XGetWindowAttributes will write _something_ to result, and panic on bad request */
             let mut attrs = std::mem::MaybeUninit::<XWindowAttributes>::zeroed().assume_init();
             let ok = XGetWindowAttributes(self.display, *window, &mut attrs);
+
             trace!("Window attributes: {:#?}", ok);
             assert!(ok != 0, "Could not acquire window attributes");
             attrs
@@ -339,11 +346,6 @@ impl Rdwm {
         self.get_current()
             .expect("No current")
             .arrange(self.display);
-
-        trace!(
-            "Created client: {:#?}",
-            self.get_current().expect("No current").clients[0]
-        );
     }
 
     /// Configure a client window based on given hints.
