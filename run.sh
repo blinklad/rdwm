@@ -30,10 +30,9 @@ function start {
 
 	Xephyr -br -ac -noreset -screen 1920x1080 :3 &
 	sleep 1
-	# DISPLAY=:4 $TEST_PROGRAM
 	DISPLAY=:3 RUST_LOG=$log exec "/home/blinklad/dev/rust/rdwm/target/debug/rdwm" &
 	sleep 1
-	DISPLAY=:3 xterm
+	DISPLAY=:3 alacritty # xterm / xeyes work fine too
 }
 
 function run {
