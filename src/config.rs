@@ -1,15 +1,16 @@
+#![allow(unused_imports)]
 use libc::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use x11::xlib::*;
 
 type XColour = c_ulong; // TODO
 
-lazy_static! {
-    /* TODO XDG base directory compliance */
-    static ref CONFIG: PathBuf = PathBuf::from("~/dev/rust/rdwm/src/config.toml");
-}
+// TODO Documentation for configuration options should follow this convention:
+// https://github.com/rust-lang/rustfmt/blob/master/Configurations.md
 
 /// Registers initial (root) window keybindings, colours and user preferences.
 /// Holds runtime state of changes, if applicable.
@@ -19,7 +20,8 @@ lazy_static! {
 struct RdwmConfig {
     windows: Option<ArrangementSettings>,
     borders: Option<BorderSettings>,
-    bindings: Option<KeySettings>,
+    binding: Option<Vec<KeySettings>>,
+    commands: Option<CommandSettings>,
     colours: Option<ColourSettings>,
 }
 
@@ -40,9 +42,9 @@ struct ArrangementSettings {
 /// borders. For example, the size of window borders (default 0) or colours for window urgency or
 /// non-focussed windows.
 struct BorderSettings {
-    colour: Option<XColour>,
+    colour: Option<String>,
     size: Option<usize>,
-    focus_colour: Option<XColour>,
+    focus_colour: Option<String>,
     no_focus_colour: Option<bool>,
 }
 
@@ -54,21 +56,23 @@ struct BorderSettings {
 /// 2. Refers to a built-in operation (for example, close the focused window)
 ///
 /// For example, in ```config.toml```:
-///```
-///[[binding]]
-///name = "opens alacritty on alt+enter" # optional
-///keys = [ "alt", "enter"]
-///operation = "term" # refers to 'term' key from [commands] table
+/// ```
+/// [[binding]]
+/// name = "opens alacritty on alt+enter" # optional
+/// keys = [ "alt", "enter"]
+/// operation = "term" # refers to 'term' key from [commands] table
 ///
-///[[binding]]
-///keys = [ "alt", "enter"]
-///operation = "kill focus"
-///```
+/// [[binding]]
+/// keys = [ "alt", "enter"]
+/// operation = "kill focus"
+/// ```
 ///
 /// Keys are defined using a simplified version of the XBindKeys conventions.
 #[derive(Debug, Serialize, Deserialize)]
 struct KeySettings {
-    binding: Option<Vec<HashMap<String, String>>>,
+    name: Option<String>,
+    keys: Option<Vec<String>>,
+    operation: Option<String>,
 }
 
 /// [commands] section of configuration file.
@@ -78,11 +82,11 @@ struct KeySettings {
 /// User-supplied commands are (for the time being) assumed to run as narrowly POSIX compliant
 /// shell scripts.
 /// For example, in ```config.toml```:
-///```
-///[commands]
-///term = "exec alacritty"
-///screenshot = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
-///```
+/// ```
+/// [commands]
+/// term = "exec alacritty"
+/// screenshot = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
+/// ```
 #[derive(Debug, Serialize, Deserialize)]
 struct CommandSettings {
     commands: Option<Vec<String>>,
@@ -96,14 +100,22 @@ struct CommandSettings {
 ///
 /// Rdwm expects colours as (maximum 64-bit) hexadecimal literals.
 /// For example, in ```config.toml```:
-///```
-///[colours]
-///periwinkle_blue = 0xCCCCFF
-///burnt_umber = 0x8a3324
-///```
+/// ```
+/// [colours]
+/// periwinkle_blue = 0xCCCCFF
+/// burnt_umber = 0x8a3324
+/// ```
 #[derive(Debug, Serialize, Deserialize)]
 struct ColourSettings {
-    colours: Option<Vec<XColour>>,
+    colours: Option<HashMap<String, String>>,
 }
 
-pub fn get_config() {}
+pub fn get_config() {
+    let config = PathBuf::from("/home/blinklad/dev/rust/rdwm/src/config.toml");
+    let mut file = File::open(config).unwrap();
+    let mut contents = String::new();
+    let _bytes = file.read_to_string(&mut contents);
+    let settings: RdwmConfig = toml::from_str(&contents).unwrap();
+
+    trace!("{:#?}", settings)
+}

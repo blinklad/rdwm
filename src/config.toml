@@ -9,12 +9,10 @@ size = 0
 focus_colour = "burnt_umber"
 
 [[binding]]
-name = "opens alacritty on alt+enter"
-keys = [ "alt", "enter"]
+keys = [ "alt", "enter" ]
 operation = "term"
 
 [[binding]]
-name = "kills focused window on alt+shift+q"
 keys = [ "alt", "shift", "q" ]
 operation = "kill focus"
 
@@ -28,5 +26,5 @@ term = "exec alacritty"
 screenshot = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
 
 [colours]
-periwinkle_blue = 0xCCCCFF
-burnt_umber = 0x8a3324 
+periwinkle_blue = "sand"
+burnt_umber = "dad" 
