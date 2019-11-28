@@ -7,7 +7,8 @@ use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use x11::xlib::*;
 
-type XColour = c_ulong; // TODO
+type XColour = c_ulong;
+const PATH: &str = "/home/blinklad/dev/rust/rdwm/src/config.toml";
 
 // TODO Documentation for configuration options should follow this convention:
 // https://github.com/rust-lang/rustfmt/blob/master/Configurations.md
@@ -17,12 +18,14 @@ type XColour = c_ulong; // TODO
 /// Operations and data are mostly opaque to Rdwm proper, which is mainly just to _respond_ to events
 /// by messaging appropriate handlers and handle any window-related book-keeping.
 #[derive(Debug, Serialize, Deserialize)]
-struct RdwmConfig {
+pub struct Config {
     windows: Option<ArrangementSettings>,
     borders: Option<BorderSettings>,
-    binding: Option<Vec<KeySettings>>,
-    commands: Option<CommandSettings>,
-    colours: Option<ColourSettings>,
+    #[serde(alias = "binding")]
+    bindings: Option<Vec<KeySettings>>,
+    #[serde(alias = "command")]
+    commands: Option<Vec<CommandSettings>>,
+    colour: Option<Vec<ColourSettings>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -58,13 +61,12 @@ struct BorderSettings {
 /// For example, in ```config.toml```:
 /// ```
 /// [[binding]]
-/// name = "opens alacritty on alt+enter" # optional
 /// keys = [ "alt", "enter"]
 /// operation = "term" # refers to 'term' key from [commands] table
 ///
 /// [[binding]]
 /// keys = [ "alt", "enter"]
-/// operation = "kill focus"
+/// operation = "kill focus" # refers to builtin command
 /// ```
 ///
 /// Keys are defined using a simplified version of the XBindKeys conventions.
@@ -83,13 +85,18 @@ struct KeySettings {
 /// shell scripts.
 /// For example, in ```config.toml```:
 /// ```
-/// [commands]
-/// term = "exec alacritty"
-/// screenshot = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
+/// [[command]]
+/// name = "term"
+/// action = "exec alacritty"
+///
+/// [[command]]
+/// name = "screenshot"
+/// action = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 struct CommandSettings {
-    commands: Option<Vec<String>>,
+    name: Option<String>,
+    action: Option<String>,
 }
 
 /// [colour] section of configuration file.
@@ -101,21 +108,49 @@ struct CommandSettings {
 /// Rdwm expects colours as (maximum 64-bit) hexadecimal literals.
 /// For example, in ```config.toml```:
 /// ```
-/// [colours]
-/// periwinkle_blue = 0xCCCCFF
-/// burnt_umber = 0x8a3324
+/// [[colour]]
+/// name = "periwinkle blue"
+/// value = 0xCCCCFF
+///
+/// [[colour]]
+/// name = "burnt umber"
+/// value = 0x8a3324
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 struct ColourSettings {
-    colours: Option<HashMap<String, String>>,
+    name: Option<String>,
+    value: Option<XColour>,
 }
 
-pub fn get_config() {
-    let config = PathBuf::from("/home/blinklad/dev/rust/rdwm/src/config.toml");
-    let mut file = File::open(config).unwrap();
-    let mut contents = String::new();
-    let _bytes = file.read_to_string(&mut contents);
-    let settings: RdwmConfig = toml::from_str(&contents).unwrap();
+impl Config {
+    /// Produces a Rdwm configuration from either:
+    /// 1. XDG base directory;
+    /// 2. /etc/share/ defaults;
+    /// 3. Application default values ('sensible' defaults)
+    ///
+    /// Once a base configuration is established, it may be the case that a well-formed
+    /// config.toml file is invalid - eg. a colour or binding is named erroneously.
+    /// In these cases, the configuration setting is ignored. However, this may cause cascading
+    /// errors if another setting relies on this reference. An attempt to restore meaning will
+    /// be made, however conservative it may be implemented as.
+    ///
+    /// Lastly, the result of a command (eg. exit status or IPC information) is not specified at
+    /// this stage. It may be logged, but is likely ignored.
+    ///
+    pub fn get_config() -> Self {
+        let config = PathBuf::from(PATH);
+        let mut file = File::open(config).unwrap();
+        let mut contents = String::new();
+        let _bytes = file.read_to_string(&mut contents);
+        let settings: Config = toml::from_str(&contents).unwrap();
 
-    trace!("{:#?}", settings)
+        debug!("{:#?}", settings);
+        settings
+    }
+}
+
+#[test]
+pub fn get_config() {
+    let config = Config::get_config();
+    println!("{:#?}", config);
 }

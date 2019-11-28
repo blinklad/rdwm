@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+
+use super::config::Config;
 use libc::*;
 use std::sync::Mutex;
 use x11::xlib::*;
@@ -24,15 +27,16 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
 /// Window manager that intercepts XEvents in the main event loop, propagating them to appropriate agents.
 /// Maintains an XWindow handle registered for Substructure Redirection, as well as a collection of Workspaces
 /// which hold client windows.
+#[derive(Debug)]
 pub struct Rdwm {
     display: *mut Display,
     root: XWindow,
     workspaces: Vec<Workspace>,
     current: usize,
+    config: Config,
 }
 
 impl Rdwm {
@@ -51,11 +55,13 @@ impl Rdwm {
         let screen = unsafe { XScreenOfDisplay(display, 0) };
 
         if screen.is_null() {
-            panic!("No screens associated with display");
+            trace!("No screens associated with display");
+            return None;
         }
 
-        /* TODO Screen indices _may_ work differently outside Xephyr */
-        let root = Rdwm::from_config(display);
+        let config = Config::get_config();
+        let root = Rdwm::register_root(&config, display);
+
         let mut workspaces = Vec::new();
         let cur_workspace = unsafe {
             Workspace::init(
@@ -64,11 +70,6 @@ impl Rdwm {
             )
         };
 
-        debug!(
-            "Display {:#?}\nRoot {:#?}\nSize:{:#?}",
-            display, root, cur_workspace.screen
-        );
-
         workspaces.push(cur_workspace);
 
         Some(Rdwm {
@@ -76,13 +77,14 @@ impl Rdwm {
             root,
             workspaces,
             current: 0,
+            config,
         })
     }
 
-    #[allow(dead_code)]
     /// Returns a handle to an X display acting as the root window, registered for any configuration
     /// required by Rdwm consumers.
-    fn from_config(display: *mut Display) -> XWindow {
+    fn register_root(_config: &Config, display: *mut Display) -> XWindow {
+        // TODO
         unsafe {
             let root = XDefaultRootWindow(display);
             XSelectInput(display, root, KeyPressMask); // TODO
@@ -421,7 +423,6 @@ impl Rdwm {
         0 /* This is ignored */
     }
 
-    #[allow(dead_code)]
     fn err_code_pretty(code: c_uchar) -> &'static str {
         match code {
             0 => "Success",
@@ -468,7 +469,8 @@ impl Drop for Rdwm {
 /// client, floating and fixed clients and details specific to the (logical) screen that they reside
 /// on. Not quite analogous to dwm's Monitor but holds some similarities.
 struct Workspace {
-    /* TODO BTreeSet may provide better abstractions then a Vec */
+    // TODO a MxN matrix with client indices better represents
+    // the abstraction of window arrangement compared to a hierarchical approach
     number: usize,
     clients: Vec<Client>,
     selected: usize,
@@ -488,13 +490,11 @@ impl Workspace {
         }
     }
 
-    #[allow(dead_code)]
     /// Returns a shared reference to the currently selected client.
     fn get_selected(&self) -> Option<&Client> {
         self.clients.get(self.selected)
     }
 
-    #[allow(dead_code)]
     /// Returns an exclusive reference to the currently selected client.
     fn get_mut_selected(&mut self) -> Option<&mut Client> {
         self.clients.get_mut(self.selected)
@@ -528,7 +528,6 @@ impl Workspace {
         }
     }
 
-    #[allow(dead_code)]
     /// Creates a window for an X client.
     /// The window is registered for substructure redirection, focus change and enter / leave events,
     fn create_window(
@@ -657,7 +656,6 @@ struct Client {
 
 impl Client {
     // TODO Perhaps Builder pattern would work well here.
-    #[allow(dead_code)]
     /// Create a window that shall be tiled.
     fn tile(
         name: String,
@@ -673,7 +671,6 @@ impl Client {
             flags: WindowFlags::TILING,
         }
     }
-    #[allow(dead_code)]
     /// Create a window that shall be floating.
     fn floating(
         name: String,
@@ -764,7 +761,6 @@ struct Quad {
 }
 
 impl Quad {
-    #[allow(dead_code)]
     fn default() -> Self {
         Quad {
             x: 0,
@@ -774,12 +770,10 @@ impl Quad {
         }
     }
 
-    #[allow(dead_code)]
     fn from_size(h: u32, w: u32) -> Self {
         Quad { x: 0, y: 0, w, h }
     }
 
-    #[allow(dead_code)]
     fn from_coords(x: u32, y: u32) -> Self {
         Quad { x, y, h: 0, w: 0 }
     }

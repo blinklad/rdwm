@@ -17,14 +17,21 @@ keys = [ "alt", "shift", "q" ]
 operation = "kill focus"
 
 [[binding]]
-name = "takes screenshot with current date"
 keys = [ "alt", "shift", "s" ]
 operation = "screenshot"
 
-[commands]
-term = "exec alacritty"
-screenshot = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
+[[command]]
+name = "term"
+action = "exec alacritty"
 
-[colours]
-periwinkle_blue = "sand"
-burnt_umber = "dad" 
+[[command]]
+name = "screenshot"
+action = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
+
+[[colour]]
+name = "periwinkle blue"
+value = 0xCCCCFF
+
+[[colour]]
+name = "burnt umber"
+value = 0x8a3324 

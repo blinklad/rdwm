@@ -18,7 +18,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .write_style(Auto)
         .init();
     info!("Starting logger OK");
-    config::get_config();
 
     let mut rdwm = Rdwm::init()
         .ok_or("could not connect to display server")
