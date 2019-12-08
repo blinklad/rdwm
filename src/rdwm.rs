@@ -3,6 +3,7 @@
 use super::config::Config;
 use libc::*;
 use std::sync::Mutex;
+use x11::keysym::*;
 use x11::xlib::*;
 type XWindow = x11::xlib::Window; // TODO NewType pattern to prevent i32 aliasing issues
 
@@ -59,6 +60,7 @@ impl Rdwm {
             return None;
         }
 
+        // Grab config and register any changes to root window
         let config = Config::get_config();
         let root = Rdwm::register_root(&config, display);
 
@@ -87,6 +89,15 @@ impl Rdwm {
         // TODO
         unsafe {
             let root = XDefaultRootWindow(display);
+            XGrabKey(
+                display,
+                XKeysymToKeycode(display, XK_Return.into()) as i32,
+                ControlMask | Mod1Mask,
+                root,
+                false as c_int,
+                GrabModeSync,
+                GrabModeSync,
+            );
             XSelectInput(display, root, KeyPressMask); // TODO
             root
         }
@@ -208,7 +219,7 @@ impl Rdwm {
                     //  ClientMessage =>
                     //  MappingNotify =>
                     //  GenericEvent =>
-                    _ => unimplemented!(),
+                    _ => unimplemented!("{:#?}", event),
                 }
             }
         }
@@ -235,6 +246,16 @@ impl Rdwm {
     }
 
     fn on_key_press(&self, event: &XKeyEvent) {
+        unsafe {
+            if (*event).keycode == XKeysymToKeycode(self.display, XK_Return.into()).into() {
+                XUngrabKey(
+                    self.display,
+                    XKeysymToKeycode(self.display, XK_Return.into()) as i32,
+                    ControlMask | Mod1Mask,
+                    self.root,
+                );
+            }
+        }
         trace!("OnKeyPress event: {:#?}", *event);
     }
 

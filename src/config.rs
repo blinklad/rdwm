@@ -1,4 +1,4 @@
-#![allow(unused_imports)]
+#![allow(unused_imports, dead_code)]
 use libc::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -19,6 +19,7 @@ const PATH: &str = "/home/blinklad/dev/rust/rdwm/src/config.toml";
 /// by messaging appropriate handlers and handle any window-related book-keeping.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
+    // TODO impl Default for Config
     windows: Option<ArrangementSettings>,
     borders: Option<BorderSettings>,
     #[serde(alias = "binding")]
@@ -73,8 +74,140 @@ struct BorderSettings {
 #[derive(Debug, Serialize, Deserialize)]
 struct KeySettings {
     name: Option<String>,
-    keys: Option<Vec<String>>,
+    key: Option<char>,
+    mods: Option<Vec<Modifier>>,
     operation: Option<String>,
+}
+
+impl KeySettings {
+    fn is_bound(&self, display: Display, keys: &XKeyEvent) -> bool {
+        false
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+// Taken and modified from Alacritty
+// https://github.com/jwilm/alacritty/blob/master/alacritty/src/config/bindings.rs
+enum Key {
+    Key1,
+    Key2,
+    Key3,
+    Key4,
+    Key5,
+    Key6,
+    Key7,
+    Key8,
+    Key9,
+    Key0,
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+    Escape,
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
+    Scroll,
+    Pause,
+    Insert,
+    Home,
+    Delete,
+    End,
+    PageDown,
+    PageUp,
+    Left,
+    Up,
+    Right,
+    Down,
+    Back,
+    Return,
+    Space,
+    Numlock,
+    Numpad0,
+    Numpad1,
+    Numpad2,
+    Numpad3,
+    Numpad4,
+    Numpad5,
+    Numpad6,
+    Numpad7,
+    Numpad8,
+    Numpad9,
+    Apostrophe,
+    Backslash,
+    Colon,
+    Comma,
+    Grave,
+    LAlt,
+    LBracket,
+    LControl,
+    LShift,
+    LWin,
+    NumpadComma,
+    NumpadEnter,
+    NumpadEquals,
+    Period,
+    RAlt,
+    RBracket,
+    RControl,
+    RShift,
+    RWin,
+    Semicolon,
+    Slash,
+    Tab,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+enum Modifier {
+    Super,
+    Alt,
+    Shift,
+    Lock,
+    Control,
+}
+
+enum Action {
+    FocusWindow,
+    KillFocus,
+    MoveUp,
+    MoveDown,
+    MoveLeft,
+    MoveRight,
+    ChangeSplit,
+    Exit,
+    MoveWorkspace(i32),
+    Execute(String),
 }
 
 /// [commands] section of configuration file.
@@ -146,6 +279,10 @@ impl Config {
 
         debug!("{:#?}", settings);
         settings
+    }
+
+    pub fn is_bound(&self, keys: &XKeyEvent, display: Display) -> bool {
+        false
     }
 }
 
