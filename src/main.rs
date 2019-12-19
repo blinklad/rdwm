@@ -1,3 +1,5 @@
+#![feature(const_fn)]
+#![feature(associated_type_defaults)]
 #[macro_use]
 extern crate log;
 #[macro_use]

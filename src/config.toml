@@ -9,18 +9,18 @@ size = 0
 focus_colour = "burnt_umber"
 
 [[binding]]
-key = "return"
-mods = [ "super" ]
+key = "Return"
+mods = [ "Super" ]
 operation = "term"
 
 [[binding]]
-key =  "q"
-mods = [ "super", "shift" ]
+key =  "Q"
+mods = [ "Super", "Shift" ]
 operation = "kill focus"
 
 [[binding]]
-key = "s"
-mods = [ "super", "shift" ]
+key = "S"
+mods = [ "Super", "shift" ]
 operation = "screenshot"
 
 [[command]]

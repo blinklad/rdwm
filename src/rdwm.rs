@@ -1,9 +1,9 @@
 #![allow(dead_code)]
-
 use super::config::Config;
 use libc::*;
 use std::sync::Mutex;
 use x11::keysym::*;
+
 use x11::xlib::*;
 type XWindow = x11::xlib::Window; // TODO NewType pattern to prevent i32 aliasing issues
 
@@ -56,7 +56,7 @@ impl Rdwm {
         let screen = unsafe { XScreenOfDisplay(display, 0) };
 
         if screen.is_null() {
-            trace!("No screens associated with display");
+            error!("No screens associated with display");
             return None;
         }
 
@@ -324,7 +324,7 @@ impl Rdwm {
 
     fn on_map_request(&mut self, event: &XMapRequestEvent) {
         self.frame(&(*event).window, false);
-        info!("OnMapRequest event: {:#?}", *event);
+        trace!("OnMapRequest event: {:#?}", *event);
     }
 
     /// Given a client window, create and reparent the client within a top-level frame, setting
@@ -373,7 +373,8 @@ impl Rdwm {
 
     /// Configure a client window based on given hints.
     fn on_configure_request(&self, event: &XConfigureRequestEvent) {
-        info!("OnConfigureRequest event: {:#?}", *event);
+        trace!("OnConfigureRequest event: {:#?}", *event);
+
         let mut config = XWindowChanges {
             x: event.x,
             y: event.y,
@@ -415,9 +416,11 @@ impl Rdwm {
                 &mut config,
             );
         };
-        info!(
-            "Resize window: {:#?} to {{ x: {} y: {} }}",
-            event.window, event.width, event.height
+        trace!(
+            "Resized window: {:#?} to {{ x: {} y: {} }}",
+            event.window,
+            event.width,
+            event.height
         );
     }
 
@@ -634,10 +637,11 @@ impl Workspace {
     /// Refresh client windows on a workspace to match some arrangement, eg. tiling over the screen
     /// space.
     fn arrange(&self, display: *mut Display) {
+        trace!("Arranging client/s");
         for (num, client) in self.clients.iter().enumerate() {
-            trace!("{{ Num: {:#?} Client: {:#?} }}", num, *client);
+            info!("{{ Num: {:#?} Client: {:#?} }}", num, *client);
             unsafe {
-                trace!(
+                info!(
                     "Offset: {:#?}",
                     ((num) * (*client).frame.attrs.window.w as usize / self.clients.len()) as i32
                 );
