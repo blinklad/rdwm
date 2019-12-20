@@ -1,5 +1,7 @@
 #![allow(unused_imports, unused_variables, dead_code)]
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+
 use libc::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -10,6 +12,7 @@ use x11::keysym::*;
 use x11::xlib::*;
 
 type XColour = c_ulong;
+type XKey = c_ulong;
 const PATH: &str = "/home/blinklad/dev/rust/rdwm/src/config.toml";
 
 // TODO Documentation for configuration options should follow this convention:
@@ -68,8 +71,8 @@ impl Default for Config {
             windows: Default::default(),
             borders: Default::default(),
             bindings: vec![KeyBinding {
-                key: String::from("Return"),
-                mods: vec![Modifier::Super],
+                key: Key::NoKey,
+                mods: vec![Modifier::Super_L],
                 operation: String::from("term"),
             }],
             commands: vec![Command {
@@ -123,6 +126,20 @@ impl Default for Border {
     }
 }
 
+// TODO
+// This allows for key registration on the root window during RDWM's preamble.
+trait KeyCommand {
+    type KCommand;
+    type XKey;
+    type ModifierMask;
+    type XKeyFlags;
+
+    fn get_mods(&self) -> Self::ModifierMask;
+    fn get_keysym(&self) -> Self::XKey;
+    fn get_action(&self, keys: Self::XKeyFlags) -> Self::KCommand;
+    fn get_key_c_str(&self, key: Self::XKey) -> &'static [u8];
+}
+
 /// [binding] section of configuration file.
 /// Binding settings are any settings that modify the behaviour of keystrokes globally.
 /// Binding key _names_ are [pre-specified](TODO), and there are two built-in levels of precedence
@@ -144,7 +161,7 @@ impl Default for Border {
 /// Keys are defined using a simplified version of the XBindKeys conventions.
 #[derive(Debug, Serialize, Deserialize)]
 struct KeyBinding {
-    key: String,
+    key: Key,
     mods: Vec<Modifier>,
     operation: String,
 }
@@ -152,7 +169,7 @@ struct KeyBinding {
 impl Default for KeyBinding {
     fn default() -> Self {
         KeyBinding {
-            key: String::new(),
+            key: Key::NoKey,
             mods: Vec::new(),
             operation: String::new(),
         }
@@ -160,27 +177,232 @@ impl Default for KeyBinding {
 }
 
 impl KeyBinding {
-    //fn get_symbol(&self) -> &str {
-    //    self.key.get_keysym()
-    //}
-
-    //fn is_bound(&self, display: Display, keys: &XKeyEvent) -> bool {
-    //    false
-    //}
+    fn is_bound(&self, display: Display, keys: &XKeyEvent) -> bool {
+        false
+    }
 }
 
-// TODO
-// This allows for key registration on the root window during RDWM's preamble.
-trait KeyCommand {
-    type KCommand;
-    type XKey;
-    type ModifierMask;
-    type XKeyFlags;
+// 97 keys
+impl KeyCommand for KeyBinding {
+    type KCommand = Action;
+    type XKey = c_ulong;
+    type ModifierMask = c_uint;
+    type XKeyFlags = c_uint;
 
-    fn get_mods(&self) -> Self::ModifierMask;
-    fn get_keysym(&self) -> Self::XKey;
-    fn get_action(&self, keys: Self::XKeyFlags) -> Self::KCommand;
-    fn get_key_string(&self, key: Self::XKey) -> &'static str;
+    fn get_mods(&self) -> Self::ModifierMask {
+        0
+    }
+
+    fn get_action(&self, keys: Self::XKeyFlags) -> Self::KCommand {
+        Action::Exit
+    }
+
+    fn get_keysym(&self) -> KeySym {
+        match self.key {
+            Key::Key1 => XK_1.into(),
+            Key::Key2 => XK_2.into(),
+            Key::Key3 => XK_3.into(),
+            Key::Key4 => XK_4.into(),
+            Key::Key5 => XK_5.into(),
+            Key::Key6 => XK_6.into(),
+            Key::Key7 => XK_7.into(),
+            Key::Key8 => XK_8.into(),
+            Key::Key9 => XK_9.into(),
+            Key::Key0 => XK_0.into(),
+            Key::A => XK_A.into(),
+            Key::B => XK_B.into(),
+            Key::C => XK_C.into(),
+            Key::D => XK_D.into(),
+            Key::E => XK_E.into(),
+            Key::F => XK_F.into(),
+            Key::G => XK_G.into(),
+            Key::H => XK_H.into(),
+            Key::I => XK_I.into(),
+            Key::J => XK_J.into(),
+            Key::K => XK_K.into(),
+            Key::L => XK_L.into(),
+            Key::M => XK_M.into(),
+            Key::N => XK_N.into(),
+            Key::O => XK_O.into(),
+            Key::P => XK_P.into(),
+            Key::Q => XK_Q.into(),
+            Key::R => XK_R.into(),
+            Key::S => XK_S.into(),
+            Key::T => XK_T.into(),
+            Key::U => XK_U.into(),
+            Key::V => XK_V.into(),
+            Key::W => XK_W.into(),
+            Key::X => XK_X.into(),
+            Key::Y => XK_Y.into(),
+            Key::Z => XK_Z.into(),
+            Key::Escape => XK_Escape.into(),
+            Key::F1 => XK_F1.into(),
+            Key::F2 => XK_F2.into(),
+            Key::F3 => XK_F3.into(),
+            Key::F4 => XK_F4.into(),
+            Key::F5 => XK_F5.into(),
+            Key::F6 => XK_F6.into(),
+            Key::F7 => XK_F7.into(),
+            Key::F8 => XK_F8.into(),
+            Key::F9 => XK_F9.into(),
+            Key::F10 => XK_F10.into(),
+            Key::F11 => XK_F11.into(),
+            Key::F12 => XK_F12.into(),
+            Key::Scroll => XK_Scroll_Lock.into(),
+            Key::Pause => XK_Pause.into(),
+            Key::Insert => XK_Pause.into(),
+            Key::Home => XK_Home.into(),
+            Key::Delete => XK_Delete.into(),
+            Key::End => XK_End.into(),
+            Key::PageDown => XK_Page_Down.into(),
+            Key::PageUp => XK_Page_Up.into(),
+            Key::Left => XK_Left.into(),
+            Key::Up => XK_Up.into(),
+            Key::Right => XK_Right.into(),
+            Key::Down => XK_Down.into(),
+            Key::Back => XK_BackSpace.into(),
+            Key::Return => XK_Return.into(),
+            Key::Space => XK_space.into(), // macros can't fix legacy cruft
+            Key::Numlock => XK_Num_Lock.into(),
+            Key::Numpad0 => XK_KP_0.into(),
+            Key::Numpad1 => XK_KP_1.into(),
+            Key::Numpad2 => XK_KP_2.into(),
+            Key::Numpad3 => XK_KP_3.into(),
+            Key::Numpad4 => XK_KP_4.into(),
+            Key::Numpad5 => XK_KP_5.into(),
+            Key::Numpad6 => XK_KP_6.into(),
+            Key::Numpad7 => XK_KP_7.into(),
+            Key::Numpad8 => XK_KP_8.into(),
+            Key::Numpad9 => XK_KP_9.into(),
+            Key::Apostrophe => XK_apostrophe.into(),
+            Key::Backslash => XK_backslash.into(),
+            Key::Colon => XK_colon.into(),
+            Key::Comma => XK_comma.into(),
+            Key::Grave => XK_grave.into(),
+            Key::LAlt => XK_Alt_L.into(),
+            Key::LBracket => XK_bracketleft.into(),
+            Key::LControl => XK_Control_L.into(),
+            Key::LShift => XK_Shift_L.into(),
+            Key::LWin => XK_Win_L.into(),
+            Key::NumpadComma => XK_KP_Separator.into(), // https://www.cl.cam.ac.uk/~mgk25/ucs/keysymdef.h
+            Key::NumpadEnter => XK_KP_Enter.into(),
+            Key::NumpadEquals => XK_KP_Equal.into(),
+            Key::Period => XK_period.into(),
+            Key::RAlt => XK_Alt_R.into(),
+            Key::RBracket => XK_bracketright.into(),
+            Key::RControl => XK_Control_R.into(),
+            Key::RShift => XK_Shift_R.into(),
+            Key::RWin => XK_Win_R.into(),
+            Key::Semicolon => XK_semicolon.into(),
+            Key::Slash => XK_slash.into(),
+            Key::Tab => XK_Tab.into(),
+            Key::NoKey => panic!("No such key"),
+        }
+    }
+
+    fn get_key_c_str(&self, key: Self::XKey) -> &'static [u8] {
+        // https://www.x.org/releases/X11R7.5/doc/man/man3/XStringToKeysym.3.html
+        match self.key {
+            Key::Key1 => b"1\0",
+            Key::Key2 => b"2\0",
+            Key::Key3 => b"3\0",
+            Key::Key4 => b"4\0",
+            Key::Key5 => b"5\0",
+            Key::Key6 => b"6\0",
+            Key::Key7 => b"7\0",
+            Key::Key8 => b"8\0",
+            Key::Key9 => b"9\0",
+            Key::Key0 => b"0\0",
+            Key::A => b"A\0",
+            Key::B => b"B\0",
+            Key::C => b"C\0",
+            Key::D => b"D\0",
+            Key::E => b"E\0",
+            Key::F => b"F\0",
+            Key::G => b"G\0",
+            Key::H => b"H\0",
+            Key::I => b"I\0",
+            Key::J => b"J\0",
+            Key::K => b"K\0",
+            Key::L => b"L\0",
+            Key::M => b"M\0",
+            Key::N => b"N\0",
+            Key::O => b"O\0",
+            Key::P => b"P\0",
+            Key::Q => b"Q\0",
+            Key::R => b"R\0",
+            Key::S => b"S\0",
+            Key::T => b"T\0",
+            Key::U => b"U\0",
+            Key::V => b"V\0",
+            Key::W => b"W\0",
+            Key::X => b"X\0",
+            Key::Y => b"Y\0",
+            Key::Z => b"Z\0",
+            Key::Escape => b"Escape\0",
+            Key::F1 => b"F1\0",
+            Key::F2 => b"F2\0",
+            Key::F3 => b"F3\0",
+            Key::F4 => b"F4\0",
+            Key::F5 => b"F5\0",
+            Key::F6 => b"F6\0",
+            Key::F7 => b"F7\0",
+            Key::F8 => b"F8\0",
+            Key::F9 => b"F9\0",
+            Key::F10 => b"F10\0",
+            Key::F11 => b"F11\0",
+            Key::F12 => b"F12\0",
+            Key::Scroll => b"Scroll_Lock\0",
+            Key::Pause => b"Pause\0",
+            Key::Insert => b"Pause\0",
+            Key::Home => b"Home\0",
+            Key::Delete => b"Delete\0",
+            Key::End => b"End\0",
+            Key::PageDown => b"Page_Down\0",
+            Key::PageUp => b"Page_Up\0",
+            Key::Left => b"Left\0",
+            Key::Up => b"Up\0",
+            Key::Right => b"Right\0",
+            Key::Down => b"Down\0",
+            Key::Back => b"BackSpace\0",
+            Key::Return => b"Return\0",
+            Key::Space => b"space\0",
+            Key::Numlock => b"Num_Lock\0",
+            Key::Numpad0 => b"KP_0\0",
+            Key::Numpad1 => b"KP_1\0",
+            Key::Numpad2 => b"KP_2\0",
+            Key::Numpad3 => b"KP_3\0",
+            Key::Numpad4 => b"KP_4\0",
+            Key::Numpad5 => b"KP_5\0",
+            Key::Numpad6 => b"KP_6\0",
+            Key::Numpad7 => b"KP_7\0",
+            Key::Numpad8 => b"KP_8\0",
+            Key::Numpad9 => b"KP_9\0",
+            Key::Apostrophe => b"apostrophe\0",
+            Key::Backslash => b"backslash\0",
+            Key::Colon => b"colon\0",
+            Key::Comma => b"comma\0",
+            Key::Grave => b"grave\0",
+            Key::LAlt => b"Alt_L\0",
+            Key::LBracket => b"bracketleft\0",
+            Key::LControl => b"Control_L\0",
+            Key::LShift => b"Shift_L\0",
+            Key::LWin => b"Win_L\0",
+            Key::NumpadComma => b"KP_Separator\0",
+            Key::NumpadEnter => b"KP_Enter\0",
+            Key::NumpadEquals => b"KP_Equal\0",
+            Key::Period => b"period\0",
+            Key::RAlt => b"Alt_R\0",
+            Key::RBracket => b"bracketright\0",
+            Key::RControl => b"Control_R\0",
+            Key::RShift => b"Shift_R\0",
+            Key::RWin => b"Win_R\0",
+            Key::Semicolon => b"semicolon\0",
+            Key::Slash => b"slash\0",
+            Key::Tab => b"Tab\0",
+            Key::NoKey => panic!("No such key"),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -386,229 +608,6 @@ enum Key {
     NoKey,
 }
 
-// 97 keys
-impl KeyCommand for Key {
-    type KCommand = Action;
-    type XKey = c_ulong;
-    type ModifierMask = c_uint;
-    type XKeyFlags = c_uint;
-
-    fn get_mods(&self) -> Self::ModifierMask {
-        0
-    }
-
-    fn get_action(&self, keys: Self::XKeyFlags) -> Self::KCommand {
-        Action::Exit
-    }
-
-    fn get_keysym(&self) -> KeySym {
-        match self {
-            Key::Key1 => XK_1.into(),
-            Key::Key2 => XK_2.into(),
-            Key::Key3 => XK_3.into(),
-            Key::Key4 => XK_4.into(),
-            Key::Key5 => XK_5.into(),
-            Key::Key6 => XK_6.into(),
-            Key::Key7 => XK_7.into(),
-            Key::Key8 => XK_8.into(),
-            Key::Key9 => XK_9.into(),
-            Key::Key0 => XK_0.into(),
-            Key::A => XK_A.into(),
-            Key::B => XK_B.into(),
-            Key::C => XK_C.into(),
-            Key::D => XK_D.into(),
-            Key::E => XK_E.into(),
-            Key::F => XK_F.into(),
-            Key::G => XK_G.into(),
-            Key::H => XK_H.into(),
-            Key::I => XK_I.into(),
-            Key::J => XK_J.into(),
-            Key::K => XK_K.into(),
-            Key::L => XK_L.into(),
-            Key::M => XK_M.into(),
-            Key::N => XK_N.into(),
-            Key::O => XK_O.into(),
-            Key::P => XK_P.into(),
-            Key::Q => XK_Q.into(),
-            Key::R => XK_R.into(),
-            Key::S => XK_S.into(),
-            Key::T => XK_T.into(),
-            Key::U => XK_U.into(),
-            Key::V => XK_V.into(),
-            Key::W => XK_W.into(),
-            Key::X => XK_X.into(),
-            Key::Y => XK_Y.into(),
-            Key::Z => XK_Z.into(),
-            Key::Escape => XK_Escape.into(),
-            Key::F1 => XK_F1.into(),
-            Key::F2 => XK_F2.into(),
-            Key::F3 => XK_F3.into(),
-            Key::F4 => XK_F4.into(),
-            Key::F5 => XK_F5.into(),
-            Key::F6 => XK_F6.into(),
-            Key::F7 => XK_F7.into(),
-            Key::F8 => XK_F8.into(),
-            Key::F9 => XK_F9.into(),
-            Key::F10 => XK_F10.into(),
-            Key::F11 => XK_F11.into(),
-            Key::F12 => XK_F12.into(),
-            Key::Scroll => XK_Scroll_Lock.into(),
-            Key::Pause => XK_Pause.into(),
-            Key::Insert => XK_Pause.into(),
-            Key::Home => XK_Home.into(),
-            Key::Delete => XK_Delete.into(),
-            Key::End => XK_End.into(),
-            Key::PageDown => XK_Page_Down.into(),
-            Key::PageUp => XK_Page_Up.into(),
-            Key::Left => XK_Left.into(),
-            Key::Up => XK_Up.into(),
-            Key::Right => XK_Right.into(),
-            Key::Down => XK_Down.into(),
-            Key::Back => XK_BackSpace.into(),
-            Key::Return => XK_Return.into(),
-            Key::Space => XK_space.into(), // macros can't fix legacy cruft
-            Key::Numlock => XK_Num_Lock.into(),
-            Key::Numpad0 => XK_KP_0.into(),
-            Key::Numpad1 => XK_KP_1.into(),
-            Key::Numpad2 => XK_KP_2.into(),
-            Key::Numpad3 => XK_KP_3.into(),
-            Key::Numpad4 => XK_KP_4.into(),
-            Key::Numpad5 => XK_KP_5.into(),
-            Key::Numpad6 => XK_KP_6.into(),
-            Key::Numpad7 => XK_KP_7.into(),
-            Key::Numpad8 => XK_KP_8.into(),
-            Key::Numpad9 => XK_KP_9.into(),
-            Key::Apostrophe => XK_apostrophe.into(),
-            Key::Backslash => XK_backslash.into(),
-            Key::Colon => XK_colon.into(),
-            Key::Comma => XK_comma.into(),
-            Key::Grave => XK_grave.into(),
-            Key::LAlt => XK_Alt_L.into(),
-            Key::LBracket => XK_bracketleft.into(),
-            Key::LControl => XK_Control_L.into(),
-            Key::LShift => XK_Shift_L.into(),
-            Key::LWin => XK_Win_L.into(),
-            Key::NumpadComma => XK_KP_Separator.into(), // https://www.cl.cam.ac.uk/~mgk25/ucs/keysymdef.h
-            Key::NumpadEnter => XK_KP_Enter.into(),
-            Key::NumpadEquals => XK_KP_Equal.into(),
-            Key::Period => XK_period.into(),
-            Key::RAlt => XK_Alt_R.into(),
-            Key::RBracket => XK_bracketright.into(),
-            Key::RControl => XK_Control_R.into(),
-            Key::RShift => XK_Shift_R.into(),
-            Key::RWin => XK_Win_R.into(),
-            Key::Semicolon => XK_semicolon.into(),
-            Key::Slash => XK_slash.into(),
-            Key::Tab => XK_Tab.into(),
-            Key::NoKey => panic!("No such key"),
-        }
-    }
-
-    fn get_key_string(&self, key: Self::XKey) -> &'static str {
-        // https://www.x.org/releases/X11R7.5/doc/man/man3/XStringToKeysym.3.html
-        match self {
-            Key::Key1 => "1",
-            Key::Key2 => "2",
-            Key::Key3 => "3",
-            Key::Key4 => "4",
-            Key::Key5 => "5",
-            Key::Key6 => "6",
-            Key::Key7 => "7",
-            Key::Key8 => "8",
-            Key::Key9 => "9",
-            Key::Key0 => "0",
-            Key::A => "A",
-            Key::B => "B",
-            Key::C => "C",
-            Key::D => "D",
-            Key::E => "E",
-            Key::F => "F",
-            Key::G => "G",
-            Key::H => "H",
-            Key::I => "I",
-            Key::J => "J",
-            Key::K => "K",
-            Key::L => "L",
-            Key::M => "M",
-            Key::N => "N",
-            Key::O => "O",
-            Key::P => "P",
-            Key::Q => "Q",
-            Key::R => "R",
-            Key::S => "S",
-            Key::T => "T",
-            Key::U => "U",
-            Key::V => "V",
-            Key::W => "W",
-            Key::X => "X",
-            Key::Y => "Y",
-            Key::Z => "Z",
-            Key::Escape => "Escape",
-            Key::F1 => "F1",
-            Key::F2 => "F2",
-            Key::F3 => "F3",
-            Key::F4 => "F4",
-            Key::F5 => "F5",
-            Key::F6 => "F6",
-            Key::F7 => "F7",
-            Key::F8 => "F8",
-            Key::F9 => "F9",
-            Key::F10 => "F10",
-            Key::F11 => "F11",
-            Key::F12 => "F12",
-            Key::Scroll => "Scroll_Lock",
-            Key::Pause => "Pause",
-            Key::Insert => "Pause",
-            Key::Home => "Home",
-            Key::Delete => "Delete",
-            Key::End => "End",
-            Key::PageDown => "Page_Down",
-            Key::PageUp => "Page_Up",
-            Key::Left => "Left",
-            Key::Up => "Up",
-            Key::Right => "Right",
-            Key::Down => "Down",
-            Key::Back => "BackSpace",
-            Key::Return => "Return",
-            Key::Space => "space",
-            Key::Numlock => "Num_Lock",
-            Key::Numpad0 => "KP_0",
-            Key::Numpad1 => "KP_1",
-            Key::Numpad2 => "KP_2",
-            Key::Numpad3 => "KP_3",
-            Key::Numpad4 => "KP_4",
-            Key::Numpad5 => "KP_5",
-            Key::Numpad6 => "KP_6",
-            Key::Numpad7 => "KP_7",
-            Key::Numpad8 => "KP_8",
-            Key::Numpad9 => "KP_9",
-            Key::Apostrophe => "apostrophe",
-            Key::Backslash => "backslash",
-            Key::Colon => "colon",
-            Key::Comma => "comma",
-            Key::Grave => "grave",
-            Key::LAlt => "Alt_L",
-            Key::LBracket => "bracketleft",
-            Key::LControl => "Control_L",
-            Key::LShift => "Shift_L",
-            Key::LWin => "Win_L",
-            Key::NumpadComma => "KP_Separator",
-            Key::NumpadEnter => "KP_Enter",
-            Key::NumpadEquals => "KP_Equal",
-            Key::Period => "period",
-            Key::RAlt => "Alt_R",
-            Key::RBracket => "bracketright",
-            Key::RControl => "Control_R",
-            Key::RShift => "Shift_R",
-            Key::RWin => "Win_R",
-            Key::Semicolon => "semicolon",
-            Key::Slash => "slash",
-            Key::Tab => "Tab",
-            Key::NoKey => panic!("No such key"),
-        }
-    }
-}
-
 impl Default for Key {
     fn default() -> Self {
         Key::NoKey
@@ -617,21 +616,62 @@ impl Default for Key {
 
 #[derive(Debug, Serialize, Deserialize)]
 enum Modifier {
-    #[serde(alias = "super")]
-    Super,
-    #[serde(alias = "alt")]
-    Alt,
+    #[serde(alias = "super_l")]
+    Super_L,
+    #[serde(alias = "super_r")]
+    Super_R,
+    #[serde(alias = "alt_l")]
+    Alt_L,
+    #[serde(alias = "alt_r")]
+    Alt_R,
+    #[serde(alias = "shift_l")]
+    Shift_L,
+    #[serde(alias = "shift_r")]
+    Shift_R,
+    #[serde(alias = "caps_lock")]
+    Caps_Lock,
     #[serde(alias = "shift")]
-    Shift,
-    #[serde(alias = "lock")]
-    Lock,
-    #[serde(alias = "control")]
-    Control,
+    Shift_Lock,
+    #[serde(alias = "control_l")]
+    Control_L,
+    #[serde(alias = "control_r")]
+    Control_R,
 }
 
+impl Modifier {
+    fn get_keysym(&self) -> XKey {
+        match self {
+            Self::Super_L => XK_Super_L.into(),
+            Self::Super_R => XK_Super_R.into(),
+            Self::Alt_L => XK_Alt_L.into(),
+            Self::Alt_R => XK_Alt_R.into(),
+            Self::Shift_L => XK_Shift_L.into(),
+            Self::Shift_R => XK_Shift_R.into(),
+            Self::Caps_Lock => XK_Caps_Lock.into(),
+            Self::Shift_Lock => XK_Shift_Lock.into(),
+            Self::Control_L => XK_Control_L.into(),
+            Self::Control_R => XK_Control_R.into(),
+        }
+    }
+
+    fn get_key_c_str(&self) -> &'static [u8] {
+        match self {
+            Self::Super_L => b"Super_L\0",
+            Self::Super_R => b"Super_R\0",
+            Self::Alt_L => b"Alt_L\0",
+            Self::Alt_R => b"Alt_R\0",
+            Self::Shift_L => b"Shift_L\0",
+            Self::Shift_R => b"Shift_R\0",
+            Self::Caps_Lock => b"Caps_Lock\0",
+            Self::Shift_Lock => b"Shift_Lock\0",
+            Self::Control_L => b"Control_L\0",
+            Self::Control_R => b"Control_R\0",
+        }
+    }
+}
 impl Default for Modifier {
     fn default() -> Self {
-        Modifier::Super
+        Modifier::Super_L
     }
 }
 
@@ -697,7 +737,7 @@ struct Command {
     action: String,
 }
 
-// impl Default for Command {}
+impl Command {}
 
 /// [colour] section of configuration file.
 /// Colour settings are named values for user-defined colours or
