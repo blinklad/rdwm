@@ -86,7 +86,15 @@ impl Rdwm {
     /// Returns a handle to an X display acting as the root window, registered for any configuration
     /// required by Rdwm consumers.
     fn register_root(_config: &Config, display: *mut Display) -> XWindow {
-        // TODO
+        // config.keys
+        //       .for_each(|binding|
+        //        XGrabKey(display, XKeysymToKeycode(display, binding.get_keysym()) as i32,
+        //            binding.get_mods()
+        //            root,
+        //            false as c_int,
+        //            GrabModeSync,
+        //            GrabModeSync,
+        //        );
         unsafe {
             let root = XDefaultRootWindow(display);
             XGrabKey(
