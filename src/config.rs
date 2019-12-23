@@ -3,7 +3,7 @@
 #![allow(non_camel_case_types)]
 
 use libc::*;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
@@ -23,15 +23,14 @@ const PATH: &str = "/home/blinklad/dev/rust/rdwm/src/config.toml";
 /// Holds runtime state of changes, if applicable.
 /// Operations and data are mostly opaque to Rdwm proper, which is mainly just to _respond_ to events
 /// by messaging appropriate handlers and handle any window-related book-keeping.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Config {
     #[serde(alias = "windows")]
     window: Arrangement,
     #[serde(alias = "borders")]
     border: Border,
-    #[serde(alias = "binding", flatten)]
-    bindings: HashMap<KeyBinding, Action>,
-    #[serde(alias = "command")]
+    #[serde(alias = "binding")]
+    bindings: Vec<KeyBinding>,
     colour: Vec<Colour>,
 }
 
@@ -55,7 +54,7 @@ impl Config {
         let mut file = File::open(config).unwrap();
         let mut contents = String::new();
         let _bytes = file.read_to_string(&mut contents);
-        let settings: Config = toml::from_str(&contents).unwrap_or_default();
+        let settings: Config = toml::from_str(&contents).unwrap();
 
         debug!("{:#?}", settings);
         settings
@@ -65,14 +64,14 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         info!("Using default configuration");
-
-        let mut bindings = HashMap::new();
-        bindings.insert(KeyBinding::default(), Action::default());
-
         Config {
             window: Default::default(),
             border: Default::default(),
-            bindings,
+            bindings: vec![KeyBinding {
+                key: Key::NoKey,
+                mods: vec![Modifier::Super_L],
+                operation: Command::default(),
+            }],
             colour: vec![Colour::default()],
         }
     }
@@ -119,6 +118,11 @@ impl Default for Border {
         }
     }
 }
+impl PartialEq for KeyBinding {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_keysym() == other.get_keysym()
+    }
+}
 
 /// [binding] section of configuration file.
 /// Binding settings are any settings that modify the behaviour of keystrokes globally.
@@ -139,15 +143,16 @@ impl Default for Border {
 /// ```
 ///
 /// Keys are defined using a simplified version of the XBindKeys conventions.
-#[derive(Debug, Serialize, Deserialize, Eq, Hash)]
+#[derive(Debug, Deserialize)]
 struct KeyBinding {
     key: Key,
     mods: Vec<Modifier>,
+    operation: Command,
 }
 
-impl PartialEq for KeyBinding {
-    fn eq(&self, other: &Self) -> bool {
-        self.get_keysym() == other.get_keysym()
+impl KeyBinding {
+    fn is_bound(&self, display: Display, keys: &XKeyEvent) -> bool {
+        false
     }
 }
 
@@ -156,6 +161,7 @@ impl Default for KeyBinding {
         KeyBinding {
             key: Key::NoKey,
             mods: Vec::new(),
+            operation: Command::default(),
         }
     }
 }
@@ -663,43 +669,73 @@ impl Default for Modifier {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-enum Action {
-    #[serde(alias = "full screen")]
+/// [commands] section of configuration file.
+/// Command settings are named values for to-be-executed commands, purely as a convenience for
+/// keybinding and per-window rule settings.
+/// [several](TODO) 'built-in' commands exist, such as ```kill focus```, ```kill all```, ```exec```.
+/// User-supplied commands are (for the time being) assumed to run as narrowly POSIX compliant
+/// shell scripts.
+/// For example, in ```config.toml```:
+/// ```
+/// [[command]]
+/// name = "term"
+/// action = "exec alacritty"
+///
+/// [[command]]
+/// name = "screenshot"
+/// action = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
+/// ```
+#[derive(Debug)]
+// #[serde(untagged)]
+// TODO Currently this will _only_ ever take a string and make it an operation
+// https://github.com/serde-rs/serde/issues/912
+enum Command {
     FullScreen,
-    #[serde(alias = "minimize")]
     Minimize,
-    #[serde(alias = "float focus")]
     FloatFocus,
-    #[serde(alias = "ground focus")]
     GroundFocus,
-    #[serde(alias = "kill focus")]
     KillFocus,
-    #[serde(alias = "focus up")]
     MoveFocusUp,
-    #[serde(alias = "focus down")]
     MoveFocusDown,
-    #[serde(alias = "focus left")]
     MoveFocusLeft,
-    #[serde(alias = "focus right")]
     MoveFocusRight,
-    #[serde(alias = "split horizontal")]
     SplitHorizontal,
-    #[serde(alias = "split vertical")]
     SplitVertical,
-    #[serde(alias = "exit")]
     Exit,
-    #[serde(alias = "move workspace")]
+    Operation(String),
     MoveWorkspace(u32),
-    #[serde(alias = "exec")]
-    Execute(String),
-    #[serde(skip)]
-    NoAction,
+    Nothing,
 }
 
-impl Default for Action {
+impl Default for Command {
     fn default() -> Self {
-        Action::NoAction
+        Command::Nothing
+    }
+}
+
+impl<'de> Deserialize<'de> for Command {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(match s.as_str() {
+            "fullscreen" => Self::FullScreen,
+            "minimize" => Self::Minimize,
+            "floating mode" => Self::FloatFocus,
+            "tiling mode" => Self::GroundFocus,
+            "kill focus" => Self::KillFocus,
+            "focus up" => Self::MoveFocusUp,
+            "focus down" => Self::MoveFocusDown,
+            "focus left" => Self::MoveFocusLeft,
+            "focus right" => Self::MoveFocusRight,
+            "split horizontal" => Self::SplitHorizontal,
+            "split vertical" => Self::SplitVertical,
+            "exit" => Self::Exit,
+            "move to workspace" => Self::MoveWorkspace(s.parse().unwrap()), // TODO
+            "" => Self::Nothing,
+            _ => Self::Operation(s),
+        })
     }
 }
 
@@ -736,7 +772,7 @@ impl Default for Colour {
 }
 
 mod test {
-    use crate::config::{Action, Config, KeyBinding, PATH};
+    use crate::config::{Command, Config, KeyBinding, PATH};
     use serde_test::{assert_tokens, Token};
     use std::collections::HashMap;
 
@@ -747,10 +783,7 @@ mod test {
     }
 
     #[test]
-    fn test_keybinding() {
-        let mut map = HashMap::new();
-        map.insert(KeyBinding::default(), Action::default());
-    }
+    fn test_keybinding() {}
 
     #[test]
     fn test_defaults() {}
