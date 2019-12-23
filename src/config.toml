@@ -11,25 +11,17 @@ focus_colour = "burnt_umber"
 [[binding]]
 key = "Return"
 mods = [ "Super" ]
-operation = "term"
+action = "term"
 
-[[binding]]
-key =  "Q"
-mods = [ "Super", "Shift" ]
-operation = "kill focus"
-
-[[binding]]
-key = "S"
-mods = [ "Super", "shift" ]
-operation = "screenshot"
-
-[[command]]
-name = "term"
-action = "exec alacritty"
-
-[[command]]
-name = "screenshot"
-action = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
+# [[binding]]
+# key =  "Q"
+# mods = [ "Super", "Shift" ]
+# action = "kill focus"
+# 
+# [[binding]]
+# key = "S"
+# mods = [ "Super", "shift" ]
+# action = "exit"
 
 [[colour]]
 name = "periwinkle blue"
