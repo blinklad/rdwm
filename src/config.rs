@@ -3,7 +3,7 @@
 #![allow(non_camel_case_types)]
 
 use libc::*;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -22,7 +22,7 @@ const PATH: &str = "/home/blinklad/dev/rust/rdwm/src/config.toml";
 /// Holds runtime state of changes, if applicable.
 /// Operations and data are mostly opaque to Rdwm proper, which is mainly just to _respond_ to events
 /// by messaging appropriate handlers and handle any window-related book-keeping.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Config {
     windows: Arrangement,
     borders: Border,
@@ -149,7 +149,7 @@ trait KeyCommand {
 /// ```
 ///
 /// Keys are defined using a simplified version of the XBindKeys conventions.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct KeyBinding {
     key: Key,
     mods: Vec<Modifier>,
@@ -667,44 +667,57 @@ impl Default for Modifier {
 /// name = "screenshot"
 /// action = "scrot -s '%Y-%m-%d_$wx$h.png` -e"
 /// ```
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug)]
+// #[serde(untagged)]
+// TODO Currently this will _only_ ever take a string and make it an operation
+// https://github.com/serde-rs/serde/issues/912
 enum Command {
-    #[serde(alias = "full screen")]
     FullScreen,
-    #[serde(alias = "minimize")]
     Minimize,
-    #[serde(alias = "float focus")]
     FloatFocus,
-    #[serde(alias = "ground focus")]
     GroundFocus,
-    #[serde(alias = "kill focus")]
     KillFocus,
-    #[serde(alias = "focus up")]
     MoveFocusUp,
-    #[serde(alias = "focus down")]
     MoveFocusDown,
-    #[serde(alias = "focus left")]
     MoveFocusLeft,
-    #[serde(alias = "focus right")]
     MoveFocusRight,
-    #[serde(alias = "split horizontal")]
     SplitHorizontal,
-    #[serde(alias = "split vertical")]
     SplitVertical,
-    #[serde(alias = "exit")]
     Exit,
-    #[serde(alias = "move workspace")]
-    MoveWorkspace(u32),
-    #[serde(alias = "exec")]
     Operation(String),
-    #[serde(skip)]
+    MoveWorkspace(u32),
     Nothing,
 }
 
 impl Default for Command {
     fn default() -> Self {
         Command::Nothing
+    }
+}
+
+impl<'de> Deserialize<'de> for Command {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(match s.as_str() {
+            "fullscreen" => Self::FullScreen,
+            "minimize" => Self::Minimize,
+            "floating mode" => Self::FloatFocus,
+            "tiling mode" => Self::GroundFocus,
+            "kill focus" => Self::KillFocus,
+            "focus up" => Self::MoveFocusUp,
+            "focus down" => Self::MoveFocusDown,
+            "focus left" => Self::MoveFocusLeft,
+            "focus right" => Self::MoveFocusRight,
+            "split horizontal" => Self::SplitHorizontal,
+            "split vertical" => Self::SplitVertical,
+            "exit" => Self::Exit,
+            "move to workspace" => Self::MoveWorkspace(s.parse().unwrap()), // TODO
+            "" => Self::Nothing,
+            _ => Self::Operation(s),
+        })
     }
 }
 
